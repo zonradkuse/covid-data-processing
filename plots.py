@@ -27,9 +27,9 @@ def generate_registered_plots(countries):
         tmp_data = np.array(cases[cases.index.isin([country])].values.tolist()[0])
         tmp_data = tmp_data[tmp_data>100]
         fit_length = np.min([tmp_data.size,1000])
-        fit_data = np.polyfit(range(fit_length),np.log2(tmp_data[:fit_length]),1)
+        fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[:fit_length]),1)
         doubling = 1/fit_data[0]
-        plt.semilogy(range(tmp_data.size),tmp_data,label="{} (Doubling time: {:.2f} days)".format(country,doubling))
+        plt.semilogy(range(tmp_data.size),tmp_data,label="{} (10x time: {:.2f} days)".format(country,doubling))
     plt.xlabel("Days since 100 cummulative cases.")
     plt.ylabel("Total number of cases.")
     plt.legend()    
