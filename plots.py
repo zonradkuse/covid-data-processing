@@ -19,7 +19,7 @@ def parse_data():
 
     return confirmed, deaths, recovered
 
-def generate_plots(countries):
+def generate_all_plots(countries):
     confirmed, deaths, recovered = parse_data()
 
     death_rate = deaths/confirmed
@@ -27,26 +27,38 @@ def generate_plots(countries):
 
     print(f"A total of {len(confirmed)} countries confirmed at least one case of covid-19")
 
-    confirmed[confirmed.index.isin(countries)].T.plot(title="Confirmed cases")
-    deaths[deaths.index.isin(countries)].T.plot(title="Deaths")
-    recovered[recovered.index.isin(countries)].T.plot(title="Recovered cases")
-
-    selected_death_rate = death_rate[death_rate.index.isin(countries)]
-    selected_death_rate = selected_death_rate.replace(np.nan, 0)
-    selected_recovery_ratio = recovery_rate[recovery_rate.index.isin(countries)]
-    selected_recovery_ratio = selected_recovery_ratio.replace(np.nan, 0)
-
     def death_rate_by_country(country):
-        return selected_death_rate[selected_death_rate.index.isin([country])].T
+        return death_rate[death_rate.index.isin([country])].T
 
     for country in countries:
         death_rate_country = death_rate_by_country(country)
         print(f"Mean death rate for {country}: {float(death_rate_country.mean()):.4f} (+-{float(death_rate_country.std()):.4f} std)")
 
-    selected_death_rate[selected_death_rate.index.isin(countries)].T.plot(title="Death rate by day and country")
-    selected_recovery_ratio.T.plot(title="Recovery rate per day by country")
+    generate_absolute_plot(confirmed, countries, title="Confirmed cases")
+    generate_absolute_plot(deaths, countries, title="Deaths")
+    generate_absolute_plot(recovered, countries, title="Recovered cases")
 
-    log_confirmed = np.log(confirmed.replace(0, 1))
+    generate_absolute_plot(death_rate, countries, "Death rate by day and country")
+    generate_absolute_plot(recovery_rate, countries, "Recovery rate per day by country")
 
-    confirmed[confirmed.index.isin(countries)].T.plot(logy=True, title="Total confirmed log-plot")
-    deaths[deaths.index.isin(countries)].T.plot(logy=True, title="Total deaths log-plot")
+    # log_confirmed = np.log(confirmed.replace(0, 1))
+
+    generate_log_plot(confirmed, countries, "Total confirmed log-plot")
+    generate_log_plot(deaths, countries, "Total deaths log-plot")
+    
+    generate_loglog_plot(deaths, countries, "Total deaths loglog-plot")
+    
+    generate_absolute_plot(confirmed.T.diff().T, countries, "New cases by country by day")
+    generate_log_plot(confirmed.T.diff().T, countries, "New cases by country by day log--plot")
+    
+    generate_absolute_plot(deaths.T.diff().T, countries, "New deaths by country by day")
+    generate_log_plot(deaths.T.diff().T, countries, "New deaths by country by day log--plot")
+
+def generate_absolute_plot(data, countries, title=None):
+    data[data.index.isin(countries)].replace(np.nan, 0).T.plot(title=title)
+
+def generate_log_plot(data, countries, title=None):
+    data[data.index.isin(countries)].replace(np.nan, 0).T.plot(logy=True, title=title)
+    
+def generate_loglog_plot(data, countries, title=None):
+    data[data.index.isin(countries)].replace(np.nan, 0).T.plot(loglog=True, title=title)
