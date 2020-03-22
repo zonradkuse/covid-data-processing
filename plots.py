@@ -20,15 +20,16 @@ def parse_data():
 
     return confirmed, deaths, recovered
 
-def semilog_cases_since(countries, num_cases=100, time_constant_type=10, num_datapoints_fit=10000):
+def semilog_cases_since(countries, num_cases=100, time_constant_type=10, num_datapoints_fit=10000, fit_first_last="first"):
     '''Create a semilog plot of the total number of cases in each country,
     measured in days since that country first experienced a threshold number
     of cases (default: 100).
 
-    The plot legend will include the current time constant for an increase of
-    a given multiple (default: 10).  The number of datapoints over which this
-    time constant is evaluated can be changed in order to capture the initial
-    trend (default: 10000).
+    The plot legend will include the time constant for an increase of a given
+    multiple (default: 10).  The number of datapoints over which this time
+    constant is evaluated can be changed in order to capture the initial trend
+    (default: 10000).  The fit can be applied to the first N data points or
+    the last N data points (default: first).
 
     inputs
     -------
@@ -44,21 +45,28 @@ def semilog_cases_since(countries, num_cases=100, time_constant_type=10, num_dat
                         time constant (which is, debatably, more interesting).  
                         It may be prudent to only consider the first set of
                         points (default = 10000; all points)
+    fit_first_last: String indicating whether the fit should occur over the "first" 
+                    or "last" N data points. (default = "first")
     '''
 
-    
     cases, deaths, recovered = parse_data()
 
     for country in countries:
         tmp_data = np.array(cases[cases.index.isin([country])].values.tolist()[0])
         tmp_data = tmp_data[tmp_data>num_cases]
         fit_length = np.min([tmp_data.size,num_datapoints_fit])
-        fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[:fit_length]),1)
+        if fit_first_last == "last":
+            fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[-fit_length:]),1)
+        else:
+            fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[:fit_length]),1)
         time_constant = 1/(fit_data[0]/np.log10(time_constant_type))
-        plt.semilogy(range(tmp_data.size),tmp_data,label="{} ({}x time: {:.2f} days)".format(country, time_constant_type, time_constant))
+        plt.semilogy(range(tmp_data.size),tmp_data,
+                     label="{} ({}x time: {:.2f} days)".format(country, time_constant_type,
+                                                               time_constant))
     plt.xlabel("Days since {} cummulative cases.".format(num_cases))
     plt.ylabel("Total number of cases.")
-    plt.legend()    
+    plt.legend(title="Time constants based on \n {} {} data points.".format(fit_first_last,
+                                                                            num_datapoints_fit))    
 
 def generate_all_plots(countries):
     confirmed, deaths, recovered = parse_data()
