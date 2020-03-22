@@ -101,6 +101,7 @@ def generate_all_plots(countries):
 
     for country in countries:
         death_rate_country = death_rate_by_country(country)
+        death_rate_country = death_rate_country[death_rate_country > 0]
         print(f"Mean death rate for {country}: {float(death_rate_country.mean()):.4f} (+-{float(death_rate_country.std()):.4f} std)")
 
     generate_absolute_plot(confirmed, countries, title="Confirmed cases")
