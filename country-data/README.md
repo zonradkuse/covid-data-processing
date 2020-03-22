@@ -1,5 +1,5 @@
 Data in this folder is copied from the
-(country-json)[https://github.com/samayo/country-json] repository per the
+[country-json](https://github.com/samayo/country-json) repository per the
 following license.
 
 There may be some small modifications to the data, particularly the string
