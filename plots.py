@@ -96,7 +96,7 @@ def semilog_per_capita_since(countries, threshold_per_capita=1,
     cases, deaths, recovered = parse_country_data()
     pop_data = read_population_data()
 
-    plt.figure(figsize=(10,7))
+    plt.figure(figsize=(10,7),facecolor="white")
     
     for country in countries:
         tmp_data = np.array(cases[cases.index.isin([country])].values.tolist()[0])
@@ -148,7 +148,7 @@ def semilog_cases_since(countries, threshold_num_cases=100, time_constant_type=1
     '''
 
     cases, deaths, recovered = parse_country_data()
-    plt.figure(figsize=(10,7))
+    plt.figure(figsize=(10,7), facecolor="white")
 
     for country in countries:
         tmp_data = np.array(cases[cases.index.isin([country])].values.tolist()[0])
