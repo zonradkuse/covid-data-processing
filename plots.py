@@ -69,7 +69,7 @@ def semilog_cases_since(countries, num_cases=100, time_constant_type=10, num_dat
                     or "last" N data points. (default = "first")
     '''
 
-    cases, deaths, recovered = parse_data()
+    cases, deaths, recovered = parse_country_data()
 
     for country in countries:
         tmp_data = np.array(cases[cases.index.isin([country])].values.tolist()[0])
@@ -89,7 +89,7 @@ def semilog_cases_since(countries, num_cases=100, time_constant_type=10, num_dat
                                                                             num_datapoints_fit))    
 
 def generate_all_plots(countries):
-    confirmed, deaths, recovered = parse_data()
+    confirmed, deaths, recovered = parse_country_data()
 
     death_rate = deaths/confirmed
     recovery_rate = recovered/confirmed
