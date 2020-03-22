@@ -101,7 +101,7 @@ def semilog_per_capita_since(countries, threshold_per_capita=1,
     for country in countries:
         tmp_data = np.array(cases[cases.index.isin([country])].values.tolist()[0])
         tmp_data = tmp_data/pop_data[country]
-        tmp_data = tmp_data[tmp_data>(threshold_per_capita/1000000)]
+        tmp_data = tmp_data[tmp_data>(threshold_per_capita/1e6)]
         fit_length = np.min([tmp_data.size,num_datapoints_fit])
         if fit_first_last == "last":
             fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[-fit_length:]),1)
