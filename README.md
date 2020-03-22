@@ -5,7 +5,7 @@ This project serves two purposes:
 1. Have a quick and easy way to play around with JHU's Covid-19 data
 2. Provide an easily accessible way to all visualisations through a web interface 
 
-Host: tbd
+Hosting: tbd
 
 Getting Started Locally
 ------------------------
@@ -24,7 +24,7 @@ Use pipenv to install and run `voila fiddle-covid-series.ipynb` to start the web
 Contributors
 -------------
 
-I want to thank everyone who has contributed to this project and especially @gonuke for his PRs!
+I want to thank everyone who has contributed to this project and especially [@gonuke](https://github.com/gonuke) for his PRs!
 
 License
 --------
