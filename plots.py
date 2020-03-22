@@ -20,17 +20,43 @@ def parse_data():
 
     return confirmed, deaths, recovered
 
-def generate_registered_plots(countries):
+def semilog_cases_since(countries, num_cases=100, time_constant_type=10, num_datapoints_fit=10000):
+    '''Create a semilog plot of the total number of cases in each country,
+    measured in days since that country first experienced a threshold number
+    of cases (default: 100).
+
+    The plot legend will include the current time constant for an increase of
+    a given multiple (default: 10).  The number of datapoints over which this
+    time constant is evaluated can be changed in order to capture the initial
+    trend (default: 10000).
+
+    inputs
+    -------
+    countries: list of strings representing valid countries in the data set
+    num_cases: threshold number of cases that determines the start of the data 
+           set for each country (default = 100)
+    time_constant_type: the multiple for which the time constant is evaluated.  
+                        A value of 10 means that the reported time constant 
+                        will be for a growth of 10x. (Default = 10)
+    num_datapoints_fit: The maximum number of data points to use in creating 
+                        the time constant fit.  As countries "flatten their curve"
+                        a single exponential fit will not represent the early 
+                        time constant (which is, debatably, more interesting).  
+                        It may be prudent to only consider the first set of
+                        points (default = 10000; all points)
+    '''
+
+    
     cases, deaths, recovered = parse_data()
 
     for country in countries:
         tmp_data = np.array(cases[cases.index.isin([country])].values.tolist()[0])
-        tmp_data = tmp_data[tmp_data>100]
-        fit_length = np.min([tmp_data.size,1000])
+        tmp_data = tmp_data[tmp_data>num_cases]
+        fit_length = np.min([tmp_data.size,num_datapoints_fit])
         fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[:fit_length]),1)
-        doubling = 1/fit_data[0]
-        plt.semilogy(range(tmp_data.size),tmp_data,label="{} (10x time: {:.2f} days)".format(country,doubling))
-    plt.xlabel("Days since 100 cummulative cases.")
+        time_constant = 1/(fit_data[0]/np.log10(time_constant_type))
+        plt.semilogy(range(tmp_data.size),tmp_data,label="{} ({}x time: {:.2f} days)".format(country, time_constant_type, time_constant))
+    plt.xlabel("Days since {} cummulative cases.".format(num_cases))
     plt.ylabel("Total number of cases.")
     plt.legend()    
 
