@@ -4,9 +4,30 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import json
 
 country_string = "Country/Region"
 province_string = "Province/State"
+
+def read_population_data():
+    '''
+    Read population-by-country data from JSON file.
+
+    output
+    ------
+    pop_dict : dictionary with key of the country name (string)
+               and value of the population (float)
+    '''
+
+    
+    country_json = open("country-data/country-by-population.json")
+    pop_data = json.load(country_json)
+    pop_dict = {}
+    for country_data in pop_data:
+        if country_data['population'] is not None:
+            pop_dict[country_data['country']] = float(country_data['population'])
+
+    return pop_dict
 
 def read_data():
     data_path = "COVID-19/csse_covid_19_data/csse_covid_19_time_series/"
@@ -40,7 +61,64 @@ def parse_province_data(country):
     
     return confirmed, deaths, recovered
 
-def semilog_cases_since(countries, num_cases=100, time_constant_type=10, num_datapoints_fit=10000, fit_first_last="first"):
+def semilog_per_capita_since(countries, threshold_per_capita=1,
+                             time_constant_type=10, num_datapoints_fit=10000,
+                             fit_first_last="first"):
+    '''Create a semilog plot of the per capita number of cases in each country,
+    measured in days since that country first experienced a threshold number
+    of cases (default: 100).
+
+    The plot legend will include the time constant for an increase of a given
+    multiple (default: 10).  The number of datapoints over which this time
+    constant is evaluated can be changed in order to capture the initial trend
+    (default: 10000).  The fit can be applied to the first N data points or
+    the last N data points (default: first).
+
+    inputs
+    -------
+    countries: list of strings representing valid countries in the data set
+    threshold_per_capita: threshold per capita number of cases per million people 
+                          that determines the start of the data set for each 
+                          country (default = 1)
+    time_constant_type: the multiple for which the time constant is evaluated.  
+                        A value of 10 means that the reported time constant 
+                        will be for a growth of 10x. (Default = 10)
+    num_datapoints_fit: The maximum number of data points to use in creating 
+                        the time constant fit.  As countries "flatten their curve"
+                        a single exponential fit will not represent the early 
+                        time constant (which is, debatably, more interesting).  
+                        It may be prudent to only consider the first set of
+                        points (default = 10000; all points)
+    fit_first_last: String indicating whether the fit should occur over the "first" 
+                    or "last" N data points. (default = "first")
+    '''
+
+    cases, deaths, recovered = parse_country_data()
+    pop_data = read_population_data()
+
+    plt.figure(figsize=(10,7),facecolor="white")
+    
+    for country in countries:
+        tmp_data = np.array(cases[cases.index.isin([country])].values.tolist()[0])
+        tmp_data = tmp_data/pop_data[country]
+        tmp_data = tmp_data[tmp_data>(threshold_per_capita/1e6)]
+        fit_length = np.min([tmp_data.size,num_datapoints_fit])
+        if fit_first_last == "last":
+            fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[-fit_length:]),1)
+        else:
+            fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[:fit_length]),1)
+        time_constant = 1/(fit_data[0]/np.log10(time_constant_type))
+        plt.semilogy(range(tmp_data.size),tmp_data*1e6,
+                     label="{} ({}x time: {:.2f} days)".format(country, time_constant_type,
+                                                               time_constant))
+    plt.xlabel("Days since {}/1,000,000 per capita cases.".format(threshold_per_capita))
+    plt.ylabel("Number of cases per million people")
+    plt.legend(title="Time constants based on \n {} {} data points.".format(fit_first_last,
+                                                                            num_datapoints_fit))    
+
+
+def semilog_cases_since(countries, threshold_num_cases=100, time_constant_type=10,
+                        num_datapoints_fit=10000, fit_first_last="first"):
     '''Create a semilog plot of the total number of cases in each country,
     measured in days since that country first experienced a threshold number
     of cases (default: 100).
@@ -54,7 +132,7 @@ def semilog_cases_since(countries, num_cases=100, time_constant_type=10, num_dat
     inputs
     -------
     countries: list of strings representing valid countries in the data set
-    num_cases: threshold number of cases that determines the start of the data 
+    threshold_num_cases: threshold number of cases that determines the start of the data 
            set for each country (default = 100)
     time_constant_type: the multiple for which the time constant is evaluated.  
                         A value of 10 means that the reported time constant 
@@ -70,10 +148,11 @@ def semilog_cases_since(countries, num_cases=100, time_constant_type=10, num_dat
     '''
 
     cases, deaths, recovered = parse_country_data()
+    plt.figure(figsize=(10,7), facecolor="white")
 
     for country in countries:
         tmp_data = np.array(cases[cases.index.isin([country])].values.tolist()[0])
-        tmp_data = tmp_data[tmp_data>num_cases]
+        tmp_data = tmp_data[tmp_data>threshold_num_cases]
         fit_length = np.min([tmp_data.size,num_datapoints_fit])
         if fit_first_last == "last":
             fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[-fit_length:]),1)
@@ -83,7 +162,7 @@ def semilog_cases_since(countries, num_cases=100, time_constant_type=10, num_dat
         plt.semilogy(range(tmp_data.size),tmp_data,
                      label="{} ({}x time: {:.2f} days)".format(country, time_constant_type,
                                                                time_constant))
-    plt.xlabel("Days since {} cummulative cases.".format(num_cases))
+    plt.xlabel("Days since {} cummulative cases.".format(threshold_num_cases))
     plt.ylabel("Total number of cases.")
     plt.legend(title="Time constants based on \n {} {} data points.".format(fit_first_last,
                                                                             num_datapoints_fit))    
