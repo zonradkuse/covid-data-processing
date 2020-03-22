@@ -1,3 +1,11 @@
+Why?
+-----
+
+This project serves two purposes:
+1. Have a quick and easy way to play around with JHU's Covid-19 data
+2. Provide an easily accessible way to visualisations through a web interface 
+
+Host: tbd
 
 Getting Started Locally
 ------------------------
@@ -12,3 +20,8 @@ To launch an interactive web service
 -------------------------------------
 
 Use pipenv to install and run `voila fiddle-covid-series.ipynb` to start the webservice
+
+Contributors
+-------------
+
+I want to thank everyone who has contributed to this project and especially @gonuke for his PRs!
