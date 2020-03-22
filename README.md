@@ -3,7 +3,7 @@ Why?
 
 This project serves two purposes:
 1. Have a quick and easy way to play around with JHU's Covid-19 data
-2. Provide an easily accessible way to visualisations through a web interface 
+2. Provide an easily accessible way to all visualisations through a web interface 
 
 Host: tbd
 
