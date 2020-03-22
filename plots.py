@@ -5,19 +5,39 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def parse_data():
-    confirmed = pd.read_csv("COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv")
-    deaths = pd.read_csv("COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv")
-    recovered = pd.read_csv("COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Recovered.csv")
+country_string = "Country/Region"
+province_string = "Province/State"
 
-    confirmed = confirmed.drop(["Lat", "Long", "Province/State"], axis=1)
-    deaths = deaths.drop(["Lat", "Long", "Province/State"], axis=1)
-    recovered = recovered.drop(["Lat", "Long", "Province/State"], axis=1)
+def read_data():
+    data_path = "COVID-19/csse_covid_19_data/csse_covid_19_time_series/"
+    
+    confirmed = pd.read_csv(data_path + "time_series_19-covid-Confirmed.csv")
+    deaths = pd.read_csv(data_path + "time_series_19-covid-Deaths.csv")
+    recovered = pd.read_csv(data_path + "time_series_19-covid-Recovered.csv")
 
-    confirmed = confirmed.groupby("Country/Region").agg("sum")
-    deaths = deaths.groupby("Country/Region").agg("sum")
-    recovered = recovered.groupby("Country/Region").agg("sum")
+    return confirmed, deaths, recovered
+    
+def parse_country_data():
+    confirmed, deaths, recovered = read_data()
 
+    confirmed = confirmed.drop(["Lat", "Long", province_string], axis=1)
+    deaths = deaths.drop(["Lat", "Long", province_string], axis=1)
+    recovered = recovered.drop(["Lat", "Long", province_string], axis=1)
+
+    confirmed = confirmed.groupby(country_string).agg("sum")
+    deaths = deaths.groupby(country_string).agg("sum")
+    recovered = recovered.groupby(country_string).agg("sum")
+
+    return confirmed, deaths, recovered
+
+def parse_province_data(country):
+
+    confirmed, deaths, recovered = read_data()
+
+    confirmed = confirmed[confirmed[country_string] == country]
+    deaths = deaths[deaths[country_string] == country]
+    recovered = recovered[recovered[country_string] == country]
+    
     return confirmed, deaths, recovered
 
 def semilog_cases_since(countries, num_cases=100, time_constant_type=10, num_datapoints_fit=10000, fit_first_last="first"):
