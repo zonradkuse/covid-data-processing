@@ -11,7 +11,7 @@ Getting Started Locally
 ------------------------
 
 1. clone repo to your machine
-2. in repo: `git submodule update`
+2. in repo: `git submodule update --init`
 3. `jupyter notebook`
 4. load the `non-interactive-plots` notebook
 5. explore
