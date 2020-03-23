@@ -8,6 +8,8 @@ import json
 
 country_string = "Country/Region"
 province_string = "Province/State"
+long_string = "Long"
+lat_string = "Lat"
 
 def read_population_data():
     '''
@@ -19,7 +21,7 @@ def read_population_data():
                and value of the population (float)
     '''
 
-    
+
     country_json = open("country-data/country-by-population.json")
     pop_data = json.load(country_json)
     pop_dict = {}
@@ -31,19 +33,19 @@ def read_population_data():
 
 def read_data():
     data_path = "COVID-19/csse_covid_19_data/csse_covid_19_time_series/"
-    
+
     confirmed = pd.read_csv(data_path + "time_series_19-covid-Confirmed.csv")
     deaths = pd.read_csv(data_path + "time_series_19-covid-Deaths.csv")
     recovered = pd.read_csv(data_path + "time_series_19-covid-Recovered.csv")
 
     return confirmed, deaths, recovered
-    
+
 def parse_country_data():
     confirmed, deaths, recovered = read_data()
 
-    confirmed = confirmed.drop(["Lat", "Long", province_string], axis=1)
-    deaths = deaths.drop(["Lat", "Long", province_string], axis=1)
-    recovered = recovered.drop(["Lat", "Long", province_string], axis=1)
+    confirmed = confirmed.drop([lat_string, long_string, province_string], axis=1)
+    deaths = deaths.drop([lat_string, long_string, province_string], axis=1)
+    recovered = recovered.drop([lat_string, long_string, province_string], axis=1)
 
     confirmed = confirmed.groupby(country_string).agg("sum")
     deaths = deaths.groupby(country_string).agg("sum")
@@ -58,7 +60,7 @@ def parse_province_data(country):
     confirmed = confirmed[confirmed[country_string] == country]
     deaths = deaths[deaths[country_string] == country]
     recovered = recovered[recovered[country_string] == country]
-    
+
     return confirmed, deaths, recovered
 
 def semilog_per_capita_since(countries, threshold_per_capita=1,
@@ -77,19 +79,19 @@ def semilog_per_capita_since(countries, threshold_per_capita=1,
     inputs
     -------
     countries: list of strings representing valid countries in the data set
-    threshold_per_capita: threshold per capita number of cases per million people 
-                          that determines the start of the data set for each 
+    threshold_per_capita: threshold per capita number of cases per million people
+                          that determines the start of the data set for each
                           country (default = 1)
-    time_constant_type: the multiple for which the time constant is evaluated.  
-                        A value of 10 means that the reported time constant 
+    time_constant_type: the multiple for which the time constant is evaluated.
+                        A value of 10 means that the reported time constant
                         will be for a growth of 10x. (Default = 10)
-    num_datapoints_fit: The maximum number of data points to use in creating 
+    num_datapoints_fit: The maximum number of data points to use in creating
                         the time constant fit.  As countries "flatten their curve"
-                        a single exponential fit will not represent the early 
-                        time constant (which is, debatably, more interesting).  
+                        a single exponential fit will not represent the early
+                        time constant (which is, debatably, more interesting).
                         It may be prudent to only consider the first set of
                         points (default = 10000; all points)
-    fit_first_last: String indicating whether the fit should occur over the "first" 
+    fit_first_last: String indicating whether the fit should occur over the "first"
                     or "last" N data points. (default = "first")
     '''
 
@@ -97,7 +99,7 @@ def semilog_per_capita_since(countries, threshold_per_capita=1,
     pop_data = read_population_data()
 
     plt.figure(figsize=(10,7),facecolor="white")
-    
+
     for country in countries:
         tmp_data = np.array(cases[cases.index.isin([country])].values.tolist()[0])
         tmp_data = tmp_data/pop_data[country]
@@ -114,7 +116,7 @@ def semilog_per_capita_since(countries, threshold_per_capita=1,
     plt.xlabel("Days since {}/1,000,000 per capita cases.".format(threshold_per_capita))
     plt.ylabel("Number of cases per million people")
     plt.legend(title="Time constants based on \n {} {} data points.".format(fit_first_last,
-                                                                            num_datapoints_fit))    
+                                                                            num_datapoints_fit))
 
 
 
@@ -129,7 +131,7 @@ def semilog_deaths_since(countries, threshold_num_cases=100,
                        time_constant_type=time_constant_type,
                        num_datapoints_fit=num_datapoints_fit,
                        fit_first_last=fit_first_last)
-    
+
 def semilog_cases_since(countries, threshold_num_cases=100,
                         time_constant_type=10, num_datapoints_fit=10000,
                         fit_first_last="first"):
@@ -158,26 +160,26 @@ def semilog_data_since(plot_data, countries, data_type="cases",
 
     inputs
     -------
-    plot_data: data frame containing the data to be plotted/analyzed.  Typically 
+    plot_data: data frame containing the data to be plotted/analyzed.  Typically
                either total cases or deaths
     countries: list of strings representing valid countries in the data set
-    threshold_num_cases: threshold number of cases that determines the start of the data 
+    threshold_num_cases: threshold number of cases that determines the start of the data
            set for each country (default = 100)
-    time_constant_type: the multiple for which the time constant is evaluated.  
-                        A value of 10 means that the reported time constant 
+    time_constant_type: the multiple for which the time constant is evaluated.
+                        A value of 10 means that the reported time constant
                         will be for a growth of 10x. (Default = 10)
-    num_datapoints_fit: The maximum number of data points to use in creating 
+    num_datapoints_fit: The maximum number of data points to use in creating
                         the time constant fit.  As countries "flatten their curve"
-                        a single exponential fit will not represent the early 
-                        time constant (which is, debatably, more interesting).  
+                        a single exponential fit will not represent the early
+                        time constant (which is, debatably, more interesting).
                         It may be prudent to only consider the first set of
                         points (default = 10000; all points)
-    fit_first_last: String indicating whether the fit should occur over the "first" 
+    fit_first_last: String indicating whether the fit should occur over the "first"
                     or "last" N data points. (default = "first")
     '''
 
     plt.figure(figsize=(10,7), facecolor="white")
-    
+
     for country in countries:
         tmp_data = np.array(plot_data[plot_data.index.isin([country])].values.tolist()[0])
         tmp_data = tmp_data[tmp_data>threshold_num_cases]
@@ -193,7 +195,7 @@ def semilog_data_since(plot_data, countries, data_type="cases",
     plt.xlabel("Days since {} cummulative {}.".format(threshold_num_cases,data_type))
     plt.ylabel("Total number of {}.".format(data_type))
     plt.legend(title="Time constants based on \n {} {} data points.".format(fit_first_last,
-                                                                            num_datapoints_fit))    
+                                                                            num_datapoints_fit))
 
 def generate_all_plots(countries):
     confirmed, deaths, recovered = parse_country_data()
@@ -222,20 +224,20 @@ def generate_all_plots(countries):
 
     generate_log_plot(confirmed, countries, "Total confirmed log-plot")
     generate_log_plot(deaths, countries, "Total deaths log-plot")
-    
+
     generate_loglog_plot(deaths, countries, "Total deaths loglog-plot")
-    
+
     generate_absolute_plot(confirmed.T.diff().T, countries, "New cases by country by day")
     generate_log_plot(confirmed.T.diff().T, countries, "New cases by country by day log--plot")
-    
+
     generate_absolute_plot(deaths.T.diff().T, countries, "New deaths by country by day")
     generate_log_plot(deaths.T.diff().T, countries, "New deaths by country by day log--plot")
 
 def generate_absolute_plot(data, countries, title=None):
-    data[data.index.isin(countries)].replace(np.nan, 0).T.plot(title=title)
+    return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(title=title)
 
 def generate_log_plot(data, countries, title=None):
-    data[data.index.isin(countries)].replace(np.nan, 0).T.plot(logy=True, title=title)
-    
+    return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(logy=True, title=title)
+
 def generate_loglog_plot(data, countries, title=None):
-    data[data.index.isin(countries)].replace(np.nan, 0).T.plot(loglog=True, title=title)
+    return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(loglog=True, title=title)

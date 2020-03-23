@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "8e83b0b681bf7e2648d83e38348d25b144c0adf4d5841cc22721445ee90faf8c"
+            "sha256": "2545415ef76f18e07b29336a586efd7f1e9dc31ab3fcd91c16c7554ceb94c3ba"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -90,10 +90,10 @@
         },
         "ipykernel": {
             "hashes": [
-                "sha256:7f1f01df22f1229c8879501057877ccaf92a3b01c1d00db708aad5003e5f9238",
-                "sha256:ba8c9e5561f3223fb47ce06ad7925cb9444337ac367341c0c520ffb68ea6d120"
+                "sha256:37c65d2e2da3326e5cf114405df6d47d997b8a3eba99e2cc4b75833bf71a5e18",
+                "sha256:39746b5f7d847a23fae4eac893e63e3d9cc5f8c3a4797fcd3bfa8d1a296ec6ed"
             ],
-            "version": "==5.1.4"
+            "version": "==5.2.0"
         },
         "ipympl": {
             "hashes": [
@@ -117,6 +117,19 @@
                 "sha256:eb2e116e75ecef9d4d228fdc66af54269afa26ab4463042e33785b887c628ba8"
             ],
             "version": "==0.2.0"
+        },
+        "ipyvue": {
+            "hashes": [
+                "sha256:a79cf059a019ad6250552a21e00201b4138788d892b8e7abefd3034b92bb4b8d"
+            ],
+            "version": "==1.2.1"
+        },
+        "ipyvuetify": {
+            "hashes": [
+                "sha256:8c951224e2eb6db5949842e24606d5212ca1bea5fa9f12b1b9f5907f3634d5ca"
+            ],
+            "index": "pypi",
+            "version": "==1.2.1"
         },
         "ipywidgets": {
             "hashes": [
@@ -582,6 +595,21 @@
             ],
             "index": "pypi",
             "version": "==0.1.21"
+        },
+        "voila-gridstack": {
+            "hashes": [
+                "sha256:0d5bde632d38bc6bb00eb41bf104367267739d3324cb32f271a42c15ab8a9848",
+                "sha256:8b8a829a755b8bf499240cbe51f2fffdd0ee8649c5c1b0c0402baa32b1597049"
+            ],
+            "index": "pypi",
+            "version": "==0.0.8"
+        },
+        "voila-vuetify": {
+            "hashes": [
+                "sha256:058beaa4b673afd7a1eb3f42a2b9f90f72897457b9e131fae85dd094a3bd8a96"
+            ],
+            "index": "pypi",
+            "version": "==0.2.2"
         },
         "wcwidth": {
             "hashes": [

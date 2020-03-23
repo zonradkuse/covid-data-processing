@@ -3,18 +3,18 @@ name = "pypi"
 url = "https://pypi.org/simple"
 verify_ssl = true
 
-[dev-packages]
-
 [packages]
-jupyter = "*"
 notebook = "*"
 voila = "*"
 pandas = "*"
 matplotlib = "*"
-bqplot = "*"
 ipympl = "*"
+jupyter = "*"
 jupyterlab = "*"
-jupyter-matplotlib = "*"
+voila-gridstack = "*"
+voila-vuetify = "*"
+ipyvuetify = "*"
+bqplot = "*"
 
 [requires]
 python_version = "3.7"
