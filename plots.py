@@ -197,7 +197,7 @@ def semilog_data_since(plot_data, countries, data_type="cases",
     ax.set_ylabel("Total number of {}.".format(data_type))
     ax.legend(title="Time constants based on \n {} {} data points.".format(fit_first_last,
                                                                             num_datapoints_fit))
-    
+
     return ax
 
 def generate_all_plots(countries):
@@ -230,17 +230,50 @@ def generate_all_plots(countries):
 
     generate_loglog_plot(deaths, countries, "Total deaths loglog-plot")
 
-    generate_absolute_plot(confirmed.T.diff().T, countries, "New cases by country by day")
     generate_log_plot(confirmed.T.diff().T, countries, "New cases by country by day log--plot")
 
     generate_absolute_plot(deaths.T.diff().T, countries, "New deaths by country by day")
     generate_log_plot(deaths.T.diff().T, countries, "New deaths by country by day log--plot")
 
+
+
+def plot_confirmed_cases(countries):
+    confirmed, deaths, recovered = parse_country_data()
+    return generate_absolute_plot(
+        confirmed,
+        countries
+    ).get_figure()
+
+
+def plot_deaths(countries):
+    confirmed, deaths, recovered = parse_country_data()
+    return generate_absolute_plot(
+        deaths,
+        countries
+    ).get_figure()
+
+
+def plot_death_rate(countries):
+    confirmed, deaths, recovered = parse_country_data()
+    death_rate = deaths/confirmed
+    return generate_absolute_plot(
+        death_rate,
+        countries
+    ).get_figure()
+
+
+def plot_newly_confirmed_per_day(countries):
+    confirmed, deaths, recovered = parse_country_data()
+    return generate_absolute_plot(confirmed.T.diff().T,
+                           countries).get_figure()
+
 def generate_absolute_plot(data, countries, title=None):
     return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(title=title)
 
+
 def generate_log_plot(data, countries, title=None):
     return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(logy=True, title=title)
+
 
 def generate_loglog_plot(data, countries, title=None):
     return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(loglog=True, title=title)
