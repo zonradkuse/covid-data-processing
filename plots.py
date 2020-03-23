@@ -126,7 +126,7 @@ def semilog_deaths_since(countries, threshold_num_cases=100,
 
     cases, deaths, recovered = parse_country_data()
 
-    semilog_data_since(deaths, countries, data_type="deaths",
+    return semilog_data_since(deaths, countries, data_type="deaths",
                        threshold_num_cases=threshold_num_cases,
                        time_constant_type=time_constant_type,
                        num_datapoints_fit=num_datapoints_fit,
@@ -138,7 +138,7 @@ def semilog_cases_since(countries, threshold_num_cases=100,
 
     cases, deaths, recovered = parse_country_data()
 
-    semilog_data_since(cases, countries, data_type="cases",
+    return semilog_data_since(cases, countries, data_type="cases",
                        threshold_num_cases=threshold_num_cases,
                        time_constant_type=time_constant_type,
                        num_datapoints_fit=num_datapoints_fit,
@@ -178,7 +178,8 @@ def semilog_data_since(plot_data, countries, data_type="cases",
                     or "last" N data points. (default = "first")
     '''
 
-    plt.figure(figsize=(10,7), facecolor="white")
+    fig = plt.figure()
+    ax = plt.axes()
 
     for country in countries:
         tmp_data = np.array(plot_data[plot_data.index.isin([country])].values.tolist()[0])
@@ -189,13 +190,15 @@ def semilog_data_since(plot_data, countries, data_type="cases",
         else:
             fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[:fit_length]),1)
         time_constant = 1/(fit_data[0]/np.log10(time_constant_type))
-        plt.semilogy(range(tmp_data.size),tmp_data,
+        ax.semilogy(range(tmp_data.size),tmp_data,
                      label="{} ({}x time: {:.2f} days)".format(country, time_constant_type,
                                                                time_constant))
-    plt.xlabel("Days since {} cummulative {}.".format(threshold_num_cases,data_type))
-    plt.ylabel("Total number of {}.".format(data_type))
-    plt.legend(title="Time constants based on \n {} {} data points.".format(fit_first_last,
+    ax.set_xlabel("Days since {} cummulative {}.".format(threshold_num_cases,data_type))
+    ax.set_ylabel("Total number of {}.".format(data_type))
+    ax.legend(title="Time constants based on \n {} {} data points.".format(fit_first_last,
                                                                             num_datapoints_fit))
+    
+    return ax
 
 def generate_all_plots(countries):
     confirmed, deaths, recovered = parse_country_data()
