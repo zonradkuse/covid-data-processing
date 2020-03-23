@@ -6,6 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import json
 
+data_path = "COVID-19/csse_covid_19_data/csse_covid_19_time_series/"
+
 country_string = "Country/Region"
 province_string = "Province/State"
 long_string = "Long"
@@ -32,14 +34,31 @@ def read_population_data():
 
     return pop_dict
 
+def read_data_usa():
+    confirmed = pd.read_csv(data_path + "time_series_covid19_confirmed_US.csv")
+    deaths = pd.read_csv(data_path + "time_series_covid19_deaths_US.csv")
+    testing = pd.read_csv(data_path + "time_series_covid19_testing_US.csv")
+
+    return confirmed, deaths, testing
+
+def read_data_global():
+    confirmed = pd.read_csv(data_path + "time_series_covid19_confirmed_global.csv")
+    deaths = pd.read_csv(data_path + "time_series_covid19_deaths_global.csv")
+    testing = pd.read_csv(data_path + "time_series_covid19_testing_global.csv")
+
+    return confirmed, deaths, testing
+
 def read_data():
-    data_path = "COVID-19/csse_covid_19_data/csse_covid_19_time_series/"
+    confirmed_us, deaths_us, testing_us = read_data_usa()
+    confirmed_global, deaths_global, testing_global = read_data_global()
+    # according to https://github.com/CSSEGISandData/COVID-19/issues/1250 they
+    # replaced US states by a single US entry in global. We drop it and merge
+    # it back into a unified dataframe
+    confirmed = confirmed_global[confirmed_global[country_string] != "US"].append(confirmed_us)
+    deaths = deaths_global[deaths_global[country_string] != "US"].append(deaths_us)
+    testing = testing_global[testing_global[country_string] != "US"].append(testing_us)
 
-    confirmed = pd.read_csv(data_path + "time_series_19-covid-Confirmed.csv")
-    deaths = pd.read_csv(data_path + "time_series_19-covid-Deaths.csv")
-    recovered = pd.read_csv(data_path + "time_series_19-covid-Recovered.csv")
-
-    return confirmed, deaths, recovered
+    return confirmed, deaths, testing
 
 def parse_country_data():
     confirmed, deaths, recovered = read_data()
@@ -55,7 +74,6 @@ def parse_country_data():
     return confirmed, deaths, recovered
 
 def parse_province_data(country):
-
     confirmed, deaths, recovered = read_data()
 
     confirmed = confirmed[confirmed[country_string] == country]
