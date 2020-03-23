@@ -5,7 +5,7 @@ This project serves two purposes:
 1. Have a quick and easy way to play around with JHU's Covid-19 data
 2. Provide an easily accessible way to all visualisations through a web interface 
 
-Hosting: tbd
+Hosting: [covid.simonfeiden.com](https://covid.simonfeiden.com/) - Thanks to [@siFeiden](https://github.com/siFeiden)!
 
 Getting Started Locally
 ------------------------
@@ -19,10 +19,14 @@ Getting Started Locally
 To launch an interactive web service
 -------------------------------------
 
-Use pipenv to install and run `voila fiddle-covid-series.ipynb` to start the webservice
+Use pipenv to install and run `voila --template=vuetify-default interactive-service.ipynb` to start the webservice
 
 Contributors
 -------------
+
+- [@gonuke](https://github.com/gonuke)
+- [@siFeiden](https://github.com/siFeiden)
+- [@bam241](https://github.com/bam241)
 
 I want to thank everyone who has contributed to this project and especially [@gonuke](https://github.com/gonuke) for his PRs!
 
