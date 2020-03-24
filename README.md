@@ -21,6 +21,13 @@ To launch an interactive web service
 
 Use pipenv to install and run `voila --template=vuetify-default interactive-service.ipynb` to start the webservice
 
+Contributing
+-------------
+
+PRs welcome! If you want to add new plots to the dashboard add a function that
+takes a list of countries (string) and returns a matplotlib ax object. Add
+your new plot to `all_plots` in `plots.py`.
+
 Contributors
 -------------
 

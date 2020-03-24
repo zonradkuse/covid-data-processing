@@ -41,7 +41,7 @@ class Visualisation:
 
         self._component_output.clear_output()
         with self._component_output:
-            display(self._update(countries))
+            display(self._update(countries).get_figure())
 
     def vuetify_output(self):
         return self._component_output

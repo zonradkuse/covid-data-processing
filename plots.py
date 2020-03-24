@@ -11,6 +11,7 @@ province_string = "Province/State"
 long_string = "Long"
 lat_string = "Lat"
 
+
 def read_population_data():
     '''
     Read population-by-country data from JSON file.
@@ -242,7 +243,7 @@ def plot_confirmed_cases(countries):
     return generate_absolute_plot(
         confirmed,
         countries
-    ).get_figure()
+    )
 
 
 def plot_deaths(countries):
@@ -250,22 +251,31 @@ def plot_deaths(countries):
     return generate_absolute_plot(
         deaths,
         countries
-    ).get_figure()
+    )
+
+
+def plot_new_deaths_per_day(countries):
+    confirmed, deaths, recovered = parse_country_data()
+
+    return generate_absolute_plot(
+        deaths.T.diff().T,
+        countries
+    )
 
 
 def plot_death_rate(countries):
     confirmed, deaths, recovered = parse_country_data()
-    death_rate = deaths/confirmed
+    death_rate = deaths.T.diff().T/confirmed
     return generate_absolute_plot(
         death_rate,
         countries
-    ).get_figure()
+    )
 
 
 def plot_newly_confirmed_per_day(countries):
     confirmed, deaths, recovered = parse_country_data()
     return generate_absolute_plot(confirmed.T.diff().T,
-                           countries).get_figure()
+                           countries)
 
 def generate_absolute_plot(data, countries, title=None):
     return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(title=title)
@@ -277,3 +287,36 @@ def generate_log_plot(data, countries, title=None):
 
 def generate_loglog_plot(data, countries, title=None):
     return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(loglog=True, title=title)
+
+all_plots = [
+    {
+        "title": "New Deaths By Confirmed Cases",
+        "description": "New deaths divided by total confirmed cases at respective day",
+        "fn": plot_death_rate
+    },
+    {
+        "title": "Total Count Of Confirmed Cases",
+        "description": "A plot of the total count of confirmed cases by day and country.",
+        "fn": plot_confirmed_cases
+    },
+    {
+        "title": "Time to 10-fold",
+        "description": "",
+        "fn": semilog_cases_since
+    },
+    {
+        "title": "Total Count Of Deaths",
+        "description": "New deaths divided by total confirmed cases at respective day",
+        "fn": plot_deaths
+    },
+    {
+        "title": "New Cases Per Day By Country",
+        "description": "A plot of the total count of new confirmed cases by day and country.",
+        "fn": plot_newly_confirmed_per_day
+    },
+    {
+        "title": "New Deaths Per Day By Country",
+        "description": "A plot of the total count of new deaths by day and country.",
+        "fn": plot_new_deaths_per_day
+    },
+]
