@@ -217,7 +217,7 @@ def semilog_data_since(plot_data, countries, data_type="cases",
     ax.legend(title="Time constants based on \n {} {} data points.".format(fit_first_last,
                                                                             num_datapoints_fit))
 
-    return ax
+    return fig
 
 def generate_all_plots(countries):
     confirmed, deaths, recovered = parse_country_data()
@@ -296,15 +296,15 @@ def plot_newly_confirmed_per_day(countries):
                            countries)
 
 def generate_absolute_plot(data, countries, title=None):
-    return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(title=title)
+    return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(title=title).get_figure()
 
 
 def generate_log_plot(data, countries, title=None):
-    return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(logy=True, title=title)
+    return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(logy=True, title=title).get_figure()
 
 
 def generate_loglog_plot(data, countries, title=None):
-    return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(loglog=True, title=title)
+    return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(loglog=True, title=title).get_figure()
 
 all_plots = [
     {
