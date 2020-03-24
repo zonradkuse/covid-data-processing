@@ -6,6 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import json
 
+data_path = "COVID-19/csse_covid_19_data/csse_covid_19_time_series/"
+
 country_string = "Country/Region"
 province_string = "Province/State"
 long_string = "Long"
@@ -32,37 +34,53 @@ def read_population_data():
 
     return pop_dict
 
+def read_data_usa():
+    confirmed = pd.read_csv(data_path + "time_series_covid19_confirmed_US.csv")
+    deaths = pd.read_csv(data_path + "time_series_covid19_deaths_US.csv")
+    testing = None # pd.read_csv(data_path + "time_series_covid19_testing_US.csv")
+
+    return confirmed, deaths, testing
+
+def read_data_global():
+    confirmed = pd.read_csv(data_path + "time_series_covid19_confirmed_global.csv")
+    deaths = pd.read_csv(data_path + "time_series_covid19_deaths_global.csv")
+    testing = None # pd.read_csv(data_path + "time_series_covid19_testing_global.csv")
+
+    return confirmed, deaths, testing
+
 def read_data():
-    data_path = "COVID-19/csse_covid_19_data/csse_covid_19_time_series/"
+    #confirmed_us, deaths_us, testing_us = read_data_usa()
+    confirmed_global, deaths_global, testing_global = read_data_global()
+    # according to https://github.com/CSSEGISandData/COVID-19/issues/1250 they
+    # replaced US states by a single US entry in global. We drop it and merge
+    # it back into a unified dataframe
+    confirmed = confirmed_global# [confirmed_global[country_string] != "US"].append(confirmed_us)
+    deaths = deaths_global# [deaths_global[country_string] != "US"].append(deaths_us)
+    testing = None # testing_global[testing_global[country_string] != "US"].append(testing_us)
 
-    confirmed = pd.read_csv(data_path + "time_series_19-covid-Confirmed.csv")
-    deaths = pd.read_csv(data_path + "time_series_19-covid-Deaths.csv")
-    recovered = pd.read_csv(data_path + "time_series_19-covid-Recovered.csv")
-
-    return confirmed, deaths, recovered
+    return confirmed, deaths, None #  testing is not yet published
 
 def parse_country_data():
-    confirmed, deaths, recovered = read_data()
+    confirmed, deaths, testing = read_data()
 
     confirmed = confirmed.drop([lat_string, long_string, province_string], axis=1)
     deaths = deaths.drop([lat_string, long_string, province_string], axis=1)
-    recovered = recovered.drop([lat_string, long_string, province_string], axis=1)
+    # testing = testing.drop([lat_string, long_string, province_string], axis=1)
 
     confirmed = confirmed.groupby(country_string).agg("sum")
     deaths = deaths.groupby(country_string).agg("sum")
-    recovered = recovered.groupby(country_string).agg("sum")
+    testing = None # testing.groupby(country_string).agg("sum")
 
-    return confirmed, deaths, recovered
+    return confirmed, deaths, testing
 
 def parse_province_data(country):
-
-    confirmed, deaths, recovered = read_data()
+    confirmed, deaths, testing = read_data()
 
     confirmed = confirmed[confirmed[country_string] == country]
     deaths = deaths[deaths[country_string] == country]
-    recovered = recovered[recovered[country_string] == country]
+    testing = None # recovered[recovered[country_string] == country]
 
-    return confirmed, deaths, recovered
+    return confirmed, deaths, testing
 
 def semilog_per_capita_since(countries, threshold_per_capita=1,
                              time_constant_type=10, num_datapoints_fit=10000,
