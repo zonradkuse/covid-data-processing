@@ -14,6 +14,17 @@ long_string = "Long"
 lat_string = "Lat"
 
 
+def use_JHU_github_live_data():
+    override_file_prefix("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/")
+
+
+def override_file_prefix(path):
+    '''Override the data path used to load data files
+    '''
+    global data_path
+    data_path = path
+
+
 def read_population_data():
     '''
     Read population-by-country data from JSON file.
