@@ -139,6 +139,7 @@ def semilog_per_capita_since(plot_data, countries, data_type="cases",
      plot_data: data frame containing the data to be plotted/analyzed.  Typically
                either total cases or deaths
     countries: list of strings representing valid countries in the data set
+    data_type: string for plot legends indicating the data type being plotted
     threshold_per_capita: threshold per capita number of cases per million people
                           that determines the start of the data set for each
                           country (default = 1)
