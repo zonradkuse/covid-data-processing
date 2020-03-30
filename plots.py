@@ -258,8 +258,6 @@ def semilog_data_since(plot_data, countries, data_type="cases",
     ax.legend(title="Time constants based on \n {} {} data points.".format(fit_first_last,
                                                                             num_datapoints_fit))
 
-#    return fig
-
 def generate_all_plots(countries):
     confirmed, deaths, recovered = parse_country_data()
 
