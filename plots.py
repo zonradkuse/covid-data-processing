@@ -93,8 +93,36 @@ def parse_province_data(country):
 
     return confirmed, deaths, testing
 
-def semilog_per_capita_since(countries, threshold_per_capita=1,
-                             time_constant_type=10, num_datapoints_fit=10000,
+def semilog_deaths_per_capita_since(countries, threshold_per_capita=1,
+                        time_constant_type=10, num_datapoints_fit=10000,
+                        fit_first_last="first"):
+
+    cases, deaths, recovered = parse_country_data()
+
+    return semilog_per_capita_since(deaths, countries, data_type="deaths",
+                       threshold_per_capita=threshold_per_capita,
+                       time_constant_type=time_constant_type,
+                       num_datapoints_fit=num_datapoints_fit,
+                       fit_first_last=fit_first_last)
+
+
+def semilog_cases_per_capita_since(countries, threshold_per_capita=1,
+                        time_constant_type=10, num_datapoints_fit=10000,
+                        fit_first_last="first"):
+
+    cases, deaths, recovered = parse_country_data()
+
+    return semilog_per_capita_since(cases, countries, data_type="cases",
+                       threshold_per_capita=threshold_per_capita,
+                       time_constant_type=time_constant_type,
+                       num_datapoints_fit=num_datapoints_fit,
+                       fit_first_last=fit_first_last)
+
+
+def semilog_per_capita_since(plot_data, countries, data_type="cases",
+                             threshold_per_capita=1,
+                             time_constant_type=10,
+                             num_datapoints_fit=10000,
                              fit_first_last="first"):
     '''Create a semilog plot of the per capita number of cases in each country,
     measured in days since that country first experienced a threshold number
@@ -108,6 +136,8 @@ def semilog_per_capita_since(countries, threshold_per_capita=1,
 
     inputs
     -------
+     plot_data: data frame containing the data to be plotted/analyzed.  Typically
+               either total cases or deaths
     countries: list of strings representing valid countries in the data set
     threshold_per_capita: threshold per capita number of cases per million people
                           that determines the start of the data set for each
@@ -125,13 +155,12 @@ def semilog_per_capita_since(countries, threshold_per_capita=1,
                     or "last" N data points. (default = "first")
     '''
 
-    cases, deaths, recovered = parse_country_data()
     pop_data = read_population_data()
 
     plt.figure(figsize=(10,7),facecolor="white")
 
     for country in countries:
-        tmp_data = np.array(cases[cases.index.isin([country])].values.tolist()[0])
+        tmp_data = np.array(plot_data[plot_data.index.isin([country])].values.tolist()[0])
         tmp_data = tmp_data/pop_data[country]
         tmp_data = tmp_data[tmp_data>(threshold_per_capita/1e6)]
         fit_length = np.min([tmp_data.size,num_datapoints_fit])
@@ -140,11 +169,11 @@ def semilog_per_capita_since(countries, threshold_per_capita=1,
         else:
             fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[:fit_length]),1)
         time_constant = 1/(fit_data[0]/np.log10(time_constant_type))
-        plt.semilogy(range(tmp_data.size),tmp_data*1e6,
+        plt.semilogy(range(tmp_data.size),tmp_data*1e6,"o-",
                      label="{} ({}x time: {:.2f} days)".format(country, time_constant_type,
                                                                time_constant))
-    plt.xlabel("Days since {}/1,000,000 per capita cases.".format(threshold_per_capita))
-    plt.ylabel("Number of cases per million people")
+    plt.xlabel("Days since {}/1,000,000 per capita {}.".format(threshold_per_capita, data_type))
+    plt.ylabel("Number of {} per million people".format(data_type))
     plt.legend(title="Time constants based on \n {} {} data points.".format(fit_first_last,
                                                                             num_datapoints_fit))
 
@@ -193,6 +222,7 @@ def semilog_data_since(plot_data, countries, data_type="cases",
     plot_data: data frame containing the data to be plotted/analyzed.  Typically
                either total cases or deaths
     countries: list of strings representing valid countries in the data set
+    data_type: string for plot legends indicating the data type being plotted
     threshold_num_cases: threshold number of cases that determines the start of the data
            set for each country (default = 100)
     time_constant_type: the multiple for which the time constant is evaluated.
@@ -228,13 +258,12 @@ def semilog_data_since(plot_data, countries, data_type="cases",
     ax.legend(title="Time constants based on \n {} {} data points.".format(fit_first_last,
                                                                             num_datapoints_fit))
 
-    return fig
+#    return fig
 
 def generate_all_plots(countries):
     confirmed, deaths, recovered = parse_country_data()
 
     death_rate = deaths/confirmed
-    recovery_rate = recovered/confirmed
 
     print(f"A total of {len(confirmed)} countries confirmed at least one case of covid-19")
 
@@ -248,12 +277,8 @@ def generate_all_plots(countries):
 
     generate_absolute_plot(confirmed, countries, title="Confirmed cases")
     generate_absolute_plot(deaths, countries, title="Deaths")
-    generate_absolute_plot(recovered, countries, title="Recovered cases")
 
     generate_absolute_plot(death_rate, countries, "Death rate by day and country")
-    generate_absolute_plot(recovery_rate, countries, "Recovery rate per day by country")
-
-    # log_confirmed = np.log(confirmed.replace(0, 1))
 
     generate_log_plot(confirmed, countries, "Total confirmed log-plot")
     generate_log_plot(deaths, countries, "Total deaths log-plot")
