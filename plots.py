@@ -94,36 +94,36 @@ def parse_province_data(country):
     return confirmed, deaths, testing
 
 def semilog_deaths_per_capita_since(countries, threshold_per_capita=1,
-                        time_constant_type=10, num_datapoints_fit=10000,
-                        fit_first_last="first"):
+                        time_constant_type=10, fit_length_constant=10000,
+                        fit_type="first"):
 
     cases, deaths, recovered = parse_country_data()
 
     return semilog_per_capita_since(deaths, countries, data_type="deaths",
                        threshold_per_capita=threshold_per_capita,
                        time_constant_type=time_constant_type,
-                       num_datapoints_fit=num_datapoints_fit,
-                       fit_first_last=fit_first_last)
+                       fit_length_constant=fit_length_constant,
+                       fit_type=fit_type)
 
 
 def semilog_cases_per_capita_since(countries, threshold_per_capita=1,
-                        time_constant_type=10, num_datapoints_fit=10000,
-                        fit_first_last="first"):
+                        time_constant_type=10, fit_length_constant=10000,
+                        fit_type="first"):
 
     cases, deaths, recovered = parse_country_data()
 
     return semilog_per_capita_since(cases, countries, data_type="cases",
                        threshold_per_capita=threshold_per_capita,
                        time_constant_type=time_constant_type,
-                       num_datapoints_fit=num_datapoints_fit,
-                       fit_first_last=fit_first_last)
+                       fit_length_constant=fit_length_constant,
+                       fit_type=fit_type)
 
 
 def semilog_per_capita_since(plot_data, countries, data_type="cases",
                              threshold_per_capita=1,
                              time_constant_type=10,
-                             num_datapoints_fit=10000,
-                             fit_first_last="first"):
+                             fit_length_constant=10000,
+                             fit_type="first"):
     '''Create a semilog plot of the per capita number of cases in each country,
     measured in days since that country first experienced a threshold number
     of cases (default: 100).
@@ -146,14 +146,28 @@ def semilog_per_capita_since(plot_data, countries, data_type="cases",
     time_constant_type: the multiple for which the time constant is evaluated.
                         A value of 10 means that the reported time constant
                         will be for a growth of 10x. (Default = 10)
-    num_datapoints_fit: The maximum number of data points to use in creating
-                        the time constant fit.  As countries "flatten their curve"
-                        a single exponential fit will not represent the early
-                        time constant (which is, debatably, more interesting).
-                        It may be prudent to only consider the first set of
-                        points (default = 10000; all points)
-    fit_first_last: String indicating whether the fit should occur over the "first"
-                    or "last" N data points. (default = "first")
+    fit_length_constant: Measure used to determine how much data to use in the fit.
+
+                         For "first" and "last" fit types, this is the maximum 
+                         number of data points to use in creating the time
+                         constant fit.  As countries "flatten their curve" a
+                         single exponential fit will not represent the early
+                         time constant (which is, debatably, more
+                         interesting).  It may be prudent to only consider the
+                         first set of points 
+
+                         For "exp" fit type, this is the rate at which the
+                         exponential weighting of the data falls off for older 
+                         data.
+
+                         (default = 10000; i.e. all points)
+    fit_type: String indicating which type of fit:
+              "first" - semi-log fit to first N points
+              "last"  - semi-log fit to last N points
+              "exp"   - semi-log fit to all points with an exponentially 
+                        decreasing weight as data is older, with constant 1/N
+              (default: "first")
+
     '''
 
     pop_data = read_population_data()
@@ -164,53 +178,58 @@ def semilog_per_capita_since(plot_data, countries, data_type="cases",
         tmp_data = np.array(plot_data[plot_data.index.isin([country])].values.tolist()[0])
         tmp_data = tmp_data/pop_data[country]
         tmp_data = tmp_data[tmp_data>(threshold_per_capita/1e6)]
-        fit_length = np.min([tmp_data.size,num_datapoints_fit])
-        if fit_first_last == "last":
+        fit_length = np.min([tmp_data.size,fit_length_constant])
+        if fit_type == "last":
             fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[-fit_length:]),1)
-        elif fit_first_last == "exp":
+            legend_label = "Time constants based on \n {} {} data points.".format(fit_type,
+                                                                            fit_length_constant)
+        elif fit_type == "exp":
             data_size = tmp_data.size
             weights = np.exp(-np.array(range(data_size))/fit_length)
             fit_data = np.polyfit(range(data_size),np.log10(tmp_data),1,w=np.flip(weights))
+            legend_label = "Time constants based on \nexponentially weighted fit \n" + \
+                           "with exp constant {}.".format(fit_length_constant)
         else:
             fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[:fit_length]),1)
+            legend_label = "Time constants based on \n {} {} data points.".format(fit_type,
+                                                                            fit_length_constant)
         time_constant = 1/(fit_data[0]/np.log10(time_constant_type))
         plt.semilogy(range(tmp_data.size),tmp_data*1e6,"o-",
                      label="{} ({}x time: {:.2f} days)".format(country, time_constant_type,
                                                                time_constant))
     plt.xlabel("Days since {}/1,000,000 per capita {}.".format(threshold_per_capita, data_type))
     plt.ylabel("Number of {} per million people".format(data_type))
-    plt.legend(title="Time constants based on \n {} {} data points.".format(fit_first_last,
-                                                                            num_datapoints_fit))
+    plt.legend(title=legend_label)
 
 
 
 def semilog_deaths_since(countries, threshold_num_cases=100,
-                        time_constant_type=10, num_datapoints_fit=10000,
-                        fit_first_last="first"):
+                        time_constant_type=10, fit_length_constant=10000,
+                        fit_type="first"):
 
     cases, deaths, recovered = parse_country_data()
 
     return semilog_data_since(deaths, countries, data_type="deaths",
                        threshold_num_cases=threshold_num_cases,
                        time_constant_type=time_constant_type,
-                       num_datapoints_fit=num_datapoints_fit,
-                       fit_first_last=fit_first_last)
+                       fit_length_constant=fit_length_constant,
+                       fit_type=fit_type)
 
 def semilog_cases_since(countries, threshold_num_cases=100,
-                        time_constant_type=10, num_datapoints_fit=10000,
-                        fit_first_last="first"):
+                        time_constant_type=10, fit_length_constant=10000,
+                        fit_type="first"):
 
     cases, deaths, recovered = parse_country_data()
 
     return semilog_data_since(cases, countries, data_type="cases",
                        threshold_num_cases=threshold_num_cases,
                        time_constant_type=time_constant_type,
-                       num_datapoints_fit=num_datapoints_fit,
-                       fit_first_last=fit_first_last)
+                       fit_length_constant=fit_length_constant,
+                       fit_type=fit_type)
 
 def semilog_data_since(plot_data, countries, data_type="cases",
                        threshold_num_cases=100, time_constant_type=10,
-                       num_datapoints_fit=10000, fit_first_last="first"):
+                       fit_length_constant=10000, fit_type="first"):
 
     '''Create a semilog plot of the total number of cases in each country,
     measured in days since that country first experienced a threshold number
@@ -233,14 +252,27 @@ def semilog_data_since(plot_data, countries, data_type="cases",
     time_constant_type: the multiple for which the time constant is evaluated.
                         A value of 10 means that the reported time constant
                         will be for a growth of 10x. (Default = 10)
-    num_datapoints_fit: The maximum number of data points to use in creating
-                        the time constant fit.  As countries "flatten their curve"
-                        a single exponential fit will not represent the early
-                        time constant (which is, debatably, more interesting).
-                        It may be prudent to only consider the first set of
-                        points (default = 10000; all points)
-    fit_first_last: String indicating whether the fit should occur over the "first"
-                    or "last" N data points. (default = "first")
+    fit_length_constant: Measure used to determine how much data to use in the fit.
+
+                         For "first" and "last" fit types, this is the maximum 
+                         number of data points to use in creating the time
+                         constant fit.  As countries "flatten their curve" a
+                         single exponential fit will not represent the early
+                         time constant (which is, debatably, more
+                         interesting).  It may be prudent to only consider the
+                         first set of points 
+
+                         For "exp" fit type, this is the rate at which the
+                         exponential weighting of the data falls off for older 
+                         data.
+
+                         (default = 10000; i.e. all points)
+    fit_type: String indicating which type of fit:
+              "first" - semi-log fit to first N points
+              "last"  - semi-log fit to last N points
+              "exp"   - semi-log fit to all points with an exponentially 
+                        decreasing weight as data is older, with constant 1/N
+              (default: "first")
     '''
 
     fig = plt.figure()
@@ -249,23 +281,29 @@ def semilog_data_since(plot_data, countries, data_type="cases",
     for country in countries:
         tmp_data = np.array(plot_data[plot_data.index.isin([country])].values.tolist()[0])
         tmp_data = tmp_data[tmp_data>threshold_num_cases]
-        fit_length = np.min([tmp_data.size,num_datapoints_fit])
-        if fit_first_last == "last":
-            fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[-fit_length:]),1)
-        elif fit_first_last == "exp":
+        fit_length = np.min([tmp_data.size,fit_length_constant])
+        if fit_type == "last":
+            fit_data = np.polyfit(range(fit_length),np.log10(tmp_dataa[-fit_length:]),1)
+            legend_label = "Time constants based on \n {} {} data points.".format(fit_type,
+                                                                            fit_length_constant)
+        elif fit_type == "exp":
             data_size = tmp_data.size
             weights = np.exp(-np.array(range(data_size))/fit_length)
             fit_data = np.polyfit(range(data_size),np.log10(tmp_data),1,w=np.flip(weights))
+            legend_label = "Time constants based on \nexponentially weighted fit \n" + \
+                           "with exp constant {}.".format(fit_length_constant)
         else:
             fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[:fit_length]),1)
+            legend_label = "Time constants based on \n {} {} data points.".format(fit_type,
+                                                                            fit_length_constant)
         time_constant = 1/(fit_data[0]/np.log10(time_constant_type))
         ax.semilogy(range(tmp_data.size),tmp_data,
                      label="{} ({}x time: {:.2f} days)".format(country, time_constant_type,
                                                                time_constant))
     ax.set_xlabel("Days since {} cummulative {}.".format(threshold_num_cases,data_type))
     ax.set_ylabel("Total number of {}.".format(data_type))
-    ax.legend(title="Time constants based on \n {} {} data points.".format(fit_first_last,
-                                                                            num_datapoints_fit))
+    ax.legend(title="Time constants based on \n {} {} data points.".format(fit_type,
+                                                                            fit_length_constant))
 
 def generate_all_plots(countries):
     confirmed, deaths, recovered = parse_country_data()
