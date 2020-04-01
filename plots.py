@@ -167,6 +167,10 @@ def semilog_per_capita_since(plot_data, countries, data_type="cases",
         fit_length = np.min([tmp_data.size,num_datapoints_fit])
         if fit_first_last == "last":
             fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[-fit_length:]),1)
+        elif fit_first_last == "exp":
+            data_size = tmp_data.size
+            weights = np.exp(-np.array(range(data_size))/fit_length)
+            fit_data = np.polyfit(range(data_size),np.log10(tmp_data),1,w=np.flip(weights))
         else:
             fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[:fit_length]),1)
         time_constant = 1/(fit_data[0]/np.log10(time_constant_type))
@@ -248,6 +252,10 @@ def semilog_data_since(plot_data, countries, data_type="cases",
         fit_length = np.min([tmp_data.size,num_datapoints_fit])
         if fit_first_last == "last":
             fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[-fit_length:]),1)
+        elif fit_first_last == "exp":
+            data_size = tmp_data.size
+            weights = np.exp(-np.array(range(data_size))/fit_length)
+            fit_data = np.polyfit(range(data_size),np.log10(tmp_data),1,w=np.flip(weights))
         else:
             fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[:fit_length]),1)
         time_constant = 1/(fit_data[0]/np.log10(time_constant_type))
