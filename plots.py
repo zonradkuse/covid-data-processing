@@ -84,8 +84,8 @@ def parse_country_data():
 
     return confirmed, deaths, testing
 
-def parse_province_data(country):
-    confirmed, deaths, testing = read_data()
+def parse_state_data(country):
+    confirmed, deaths, testing = read_us_data()
 
     confirmed = confirmed[confirmed[country_string] == country]
     deaths = deaths[deaths[country_string] == country]
@@ -93,37 +93,12 @@ def parse_province_data(country):
 
     return confirmed, deaths, testing
 
-def semilog_deaths_per_capita_since(countries, threshold_per_capita=1,
-                        time_constant_type=10, fit_length_constant=10000,
-                        fit_type="first"):
 
-    cases, deaths, recovered = parse_country_data()
-
-    return semilog_per_capita_since(deaths, countries, data_type="deaths",
-                       threshold_per_capita=threshold_per_capita,
-                       time_constant_type=time_constant_type,
-                       fit_length_constant=fit_length_constant,
-                       fit_type=fit_type)
-
-
-def semilog_cases_per_capita_since(countries, threshold_per_capita=1,
-                        time_constant_type=10, fit_length_constant=10000,
-                        fit_type="first"):
-
-    cases, deaths, recovered = parse_country_data()
-
-    return semilog_per_capita_since(cases, countries, data_type="cases",
-                       threshold_per_capita=threshold_per_capita,
-                       time_constant_type=time_constant_type,
-                       fit_length_constant=fit_length_constant,
-                       fit_type=fit_type)
-
-
-def semilog_per_capita_since(plot_data, countries, data_type="cases",
-                             threshold_per_capita=1,
-                             time_constant_type=10,
-                             fit_length_constant=10000,
-                             fit_type="first"):
+def semilog_per_capita_country_since(plot_data, countries, data_type="cases",
+                                     threshold=100,
+                                     fit_info = {'constant' : 10,
+                                                 'length' : 5,
+                                                 'type' :"exp"}):
     '''Create a semilog plot of the per capita number of cases in each country,
     measured in days since that country first experienced a threshold number
     of cases (default: 100).
@@ -170,66 +145,98 @@ def semilog_per_capita_since(plot_data, countries, data_type="cases",
 
     '''
 
-    pop_data = read_population_data()
-
-    plt.figure(figsize=(10,7),facecolor="white")
+    fig = plt.figure(figsize=(10,7),facecolor="white")
+    ax = plt.axes()
 
     for country in countries:
-        tmp_data = np.array(plot_data[plot_data.index.isin([country])].values.tolist()[0])
-        tmp_data = tmp_data/pop_data[country]
-        tmp_data = tmp_data[tmp_data>(threshold_per_capita/1e6)]
-        fit_length = np.min([tmp_data.size,fit_length_constant])
-        if fit_type == "last":
-            fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[-fit_length:]),1)
-            legend_label = "Time constants based on \n {} {} data points.".format(fit_type,
-                                                                            fit_length_constant)
-        elif fit_type == "exp":
-            data_size = tmp_data.size
-            weights = np.exp(-np.array(range(data_size))/fit_length)
-            fit_data = np.polyfit(range(data_size),np.log10(tmp_data),1,w=np.flip(weights))
-            legend_label = "Time constants based on \nexponentially weighted fit \n" + \
-                           "with exp constant {}.".format(fit_length_constant)
-        else:
-            fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[:fit_length]),1)
-            legend_label = "Time constants based on \n {} {} data points.".format(fit_type,
-                                                                            fit_length_constant)
-        time_constant = 1/(fit_data[0]/np.log10(time_constant_type))
-        plt.semilogy(range(tmp_data.size),tmp_data*1e6,"o-",
-                     label="{} ({}x time: {:.2f} days)".format(country, time_constant_type,
+        tmp_data, fit_data = evaluate_country_per_capita_data(plot_data, country, threshold, fit_info)
+        time_constant = fit_data[0]
+        legend_label = fit_data[1]
+        ax.semilogy(range(tmp_data.size),tmp_data,"o-",
+                     label="{} ({}x time: {:.2f} days)".format(country, fit_info['constant'],
                                                                time_constant))
-    plt.xlabel("Days since {}/1,000,000 per capita {}.".format(threshold_per_capita, data_type))
-    plt.ylabel("Number of {} per million people".format(data_type))
-    plt.legend(title=legend_label)
+    ax.set_xlabel("Days since {}/1,000,000 per capita {}.".format(threshold, data_type))
+    ax.set_ylabel("Number of {} per million people.".format(data_type))
+    ax.legend(title=legend_label)
 
-
-
-def semilog_deaths_since(countries, threshold_num_cases=100,
+def semilog_us_deaths_since(states, counties, threshold_num_cases=100,
                         time_constant_type=10, fit_length_constant=10000,
                         fit_type="first"):
 
-    cases, deaths, recovered = parse_country_data()
+    cases, deaths, recovered = parse_state_data()
 
-    return semilog_data_since(deaths, countries, data_type="deaths",
+    return semilog_us_data_since(deaths, states, counties, data_type="deaths",
                        threshold_num_cases=threshold_num_cases,
                        time_constant_type=time_constant_type,
                        fit_length_constant=fit_length_constant,
                        fit_type=fit_type)
 
-def semilog_cases_since(countries, threshold_num_cases=100,
+def semilog_us_cases_since(states, counties, threshold_num_cases=100,
                         time_constant_type=10, fit_length_constant=10000,
                         fit_type="first"):
 
-    cases, deaths, recovered = parse_country_data()
+    cases, deaths, recovered = parse_state_data()
 
-    return semilog_data_since(cases, countries, data_type="cases",
+    return semilog_us_data_since(cases, states, counties, data_type="cases",
                        threshold_num_cases=threshold_num_cases,
                        time_constant_type=time_constant_type,
                        fit_length_constant=fit_length_constant,
                        fit_type=fit_type)
 
-def semilog_data_since(plot_data, countries, data_type="cases",
-                       threshold_num_cases=100, time_constant_type=10,
-                       fit_length_constant=10000, fit_type="first"):
+def evaluate_country_per_capita_data(data_source,
+                                     country,
+                                     threshold=100,
+                                     fit_info = {'constant' : 10,
+                                                 'length' : 5,
+                                                 'type' : "exp"}):
+    
+    pop_data = read_population_data()
+
+    plot_data = np.array(data_source[data_source.index.isin([country])].values.tolist()[0])
+    plot_data = plot_data/pop_data[country]
+    plot_data = plot_data[plot_data>(threshold/1e6)]
+
+    return plot_data, fit_country_data(plot_data, fit_info)
+
+def evaluate_country_data(data_source,
+                          country,
+                          threshold=100,
+                          fit_info = {'constant' : 10,
+                                      'length' : 5,
+                                      'type' : "exp"}):
+    
+    plot_data = np.array(data_source[data_source.index.isin([country])].values.tolist()[0])
+    plot_data = plot_data[plot_data>threshold]
+
+    return plot_data, fit_country_data(plot_data, fit_info)
+
+def fit_country_data(plot_data, fit_info):
+    
+    if fit_info['type'] == "exp":
+        data_size = plot_data.size
+        weights = np.exp(-np.array(range(data_size))/fit_info['length'])
+        fit_data = np.polyfit(range(data_size),np.log10(plot_data),1,w=np.flip(weights))
+        legend_label = "Time constants based on \nexponentially weighted fit \n" + \
+                       "with exp constant {}.".format(fit_info['length'])
+    else:
+        fit_length = np.min([plot_data.size, fit_info['length']])
+        if fit_info['type'] == "last":
+            fit_data = np.polyfit(range(fit_length),np.log10(plot_data[-fit_length:]),1)
+        else:
+            fit_data = np.polyfit(range(fit_length),np.log10(plot_data[:fit_length]),1)
+        legend_label = "Time constants based on \n {} {} data points.".format(fit_info['type'],
+                                                                              fit_info['length'])
+
+    time_constant = 1/(fit_data[0]/np.log10(fit_info['constant']))
+
+    return time_constant, legend_label
+
+def semilog_country_since(plot_data, countries,
+                          data_type="cases",
+                          threshold=100,
+                          fit_info = {'constant' : 10,
+                                      'length' : 5,
+                                      'type' :"exp"}):
 
     '''Create a semilog plot of the total number of cases in each country,
     measured in days since that country first experienced a threshold number
@@ -247,7 +254,7 @@ def semilog_data_since(plot_data, countries, data_type="cases",
                either total cases or deaths
     countries: list of strings representing valid countries in the data set
     data_type: string for plot legends indicating the data type being plotted
-    threshold_num_cases: threshold number of cases that determines the start of the data
+    threshold: threshold number of cases that determines the start of the data
            set for each country (default = 100)
     time_constant_type: the multiple for which the time constant is evaluated.
                         A value of 10 means that the reported time constant
@@ -275,35 +282,21 @@ def semilog_data_since(plot_data, countries, data_type="cases",
               (default: "first")
     '''
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(10,7),facecolor="white")
     ax = plt.axes()
 
     for country in countries:
-        tmp_data = np.array(plot_data[plot_data.index.isin([country])].values.tolist()[0])
-        tmp_data = tmp_data[tmp_data>threshold_num_cases]
-        fit_length = np.min([tmp_data.size,fit_length_constant])
-        if fit_type == "last":
-            fit_data = np.polyfit(range(fit_length),np.log10(tmp_dataa[-fit_length:]),1)
-            legend_label = "Time constants based on \n {} {} data points.".format(fit_type,
-                                                                            fit_length_constant)
-        elif fit_type == "exp":
-            data_size = tmp_data.size
-            weights = np.exp(-np.array(range(data_size))/fit_length)
-            fit_data = np.polyfit(range(data_size),np.log10(tmp_data),1,w=np.flip(weights))
-            legend_label = "Time constants based on \nexponentially weighted fit \n" + \
-                           "with exp constant {}.".format(fit_length_constant)
-        else:
-            fit_data = np.polyfit(range(fit_length),np.log10(tmp_data[:fit_length]),1)
-            legend_label = "Time constants based on \n {} {} data points.".format(fit_type,
-                                                                            fit_length_constant)
-        time_constant = 1/(fit_data[0]/np.log10(time_constant_type))
-        ax.semilogy(range(tmp_data.size),tmp_data,
-                     label="{} ({}x time: {:.2f} days)".format(country, time_constant_type,
+        tmp_data, fit_data = evaluate_country_data(plot_data, country, threshold, fit_info)
+        time_constant = fit_data[0]
+        legend_label = fit_data[1]
+        ax.semilogy(range(tmp_data.size),tmp_data,"o-",
+                     label="{} ({}x time: {:.2f} days)".format(country, fit_info['constant'],
                                                                time_constant))
-    ax.set_xlabel("Days since {} cummulative {}.".format(threshold_num_cases,data_type))
+    ax.set_xlabel("Days since {} cummulative {}.".format(threshold,data_type))
     ax.set_ylabel("Total number of {}.".format(data_type))
-    ax.legend(title="Time constants based on \n {} {} data points.".format(fit_type,
-                                                                            fit_length_constant))
+    ax.legend(title=legend_label)
+
+    return fig
 
 def generate_all_plots(countries):
     confirmed, deaths, recovered = parse_country_data()
@@ -376,6 +369,15 @@ def plot_newly_confirmed_per_day(countries):
     return generate_absolute_plot(confirmed.T.diff().T,
                            countries)
 
+def semilog_cases_since(countries):
+    """
+    convenience interface used in all_plots below
+    """
+    
+    confirmed, deaths, recovered = parse_country_data()
+
+    return semilog_country_since(confirmed, countries)
+    
 def generate_absolute_plot(data, countries, title=None):
     return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(title=title).get_figure()
 
