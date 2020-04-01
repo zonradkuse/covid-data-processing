@@ -185,18 +185,19 @@ def semilog_per_capita_since(plot_data, countries, states=[], counties=[],
                         population_data = pop_data,
                         data_type = data_type,
                         threshold = threshold/1e6,
-                        fit_info = fit_info)
+                        fit_info = fit_info,
+                        xlabel="Days since {} per capita {}.",
+                        ylabel="Number of {} per million people.")
     
-    fig.axes[0].set_xlabel("Days since {}/1,000,000 per capita {}.".format(threshold, data_type))
-    fig.axes[0].set_ylabel("Number of {} per million people.".format(data_type))
-
 def semilog_since(plot_data, countries, states=[], counties=[],
                   population_data = None,
                   data_type="cases",
                   threshold=100,
                   fit_info = {'constant' : 10,
                               'length' : 5,
-                              'type' :"exp"}):
+                              'type' :"exp"},
+                  xlabel="Days since {} cummulative {}",
+                  ylabel="Total number of {}."):
 
     '''
     Create a semilog plot of the cases/deaths in each country, measured in days
@@ -236,12 +237,11 @@ def semilog_since(plot_data, countries, states=[], counties=[],
         ax.semilogy(range(tmp_data.size),tmp_data,"o-",
                      label="{} ({}x time: {:.2f} days)".format(country, fit_info['constant'],
                                                                time_constant))
-    ax.set_xlabel("Days since {} cummulative {}.".format(threshold,data_type))
-    ax.set_ylabel("Total number of {}.".format(data_type))
+    ax.set_xlabel(xlabel.format(threshold,data_type))
+    ax.set_ylabel(ylabel.format(data_type))
     ax.legend(title=generate_legend_label(fit_info))
 
-    return fig
-
+    
 def generate_all_plots(countries):
     confirmed, deaths, recovered = parse_country_data()
 
