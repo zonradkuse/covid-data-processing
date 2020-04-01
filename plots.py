@@ -16,7 +16,6 @@ province_string = "Province/State"
 long_string = "Long"
 lat_string = "Lat"
 
-
 def use_JHU_github_live_data():
     global default_data_location
     default_data_location = 'live'
@@ -85,10 +84,21 @@ def select_country_data(data_source,
                         threshold=100):
 
     """
-    Trim country data
+    Select data for the given country, divide by its population and 
+    trim to greater than some threshold.
+
+    inputs
+    ------
+    data_source : a pandas data frame with country column as index
+    country : the name of the country
+    population : the population of the country
+                 (default: 1, i.e. do not divide by population)
+    threahsold : only data greater than this threshold is kept in the data
+                 Note: the threshold should be scaled appropriately with 
+                       the population
+                 (default: 100)
     """
 
-    
     plot_data = np.array(data_source[data_source.index.isin([country])].values.tolist()[0])
     plot_data = plot_data/population
     plot_data = plot_data[plot_data>threshold]
@@ -96,75 +106,13 @@ def select_country_data(data_source,
     return plot_data
 
 def fit_region_data(plot_data, fit_info):
-    
-    if fit_info['type'] == "exp":
-        data_size = plot_data.size
-        weights = np.exp(-np.array(range(data_size))/fit_info['length'])
-        fit_data = np.polyfit(range(data_size),np.log10(plot_data),1,w=np.flip(weights))
-        legend_label = "Time constants based on \nexponentially weighted fit \n" + \
-                       "with exp constant {}.".format(fit_info['length'])
-    else:
-        fit_length = np.min([plot_data.size, fit_info['length']])
-        if fit_info['type'] == "last":
-            fit_data = np.polyfit(range(fit_length),np.log10(plot_data[-fit_length:]),1)
-        else:
-            fit_data = np.polyfit(range(fit_length),np.log10(plot_data[:fit_length]),1)
-        legend_label = "Time constants based on \n {} {} data points.".format(fit_info['type'],
-                                                                              fit_info['length'])
-
-    time_constant = 1/(fit_data[0]/np.log10(fit_info['constant']))
-
-    return time_constant, legend_label
-
-def semilog_per_capita_since(plot_data, countries, states=[], counties=[],
-                             data_type="cases",
-                             threshold=1,
-                             fit_info = {'constant' : 10,
-                                         'length' : 5,
-                                         'type' :"exp"}):
-    '''
-    Entry point for semilog plots since a threshold for per-capita data.
-
-    See semilog_since() for definition of parameters.
-    '''
-
-    fig = semilog_since(plot_data, countries, states, counties,
-                        population_data = pop_data,
-                        data_type = data_type,
-                        threshold = threshold/1e6,
-                        fit_info = fit_info)
-    
-    fig.axes[0].set_xlabel("Days since {}/1,000,000 per capita {}.".format(threshold, data_type))
-    fig.axes[0].set_ylabel("Number of {} per million people.".format(data_type))
-
-def semilog_since(plot_data, countries, states=[], counties=[],
-                  population_data = None,
-                  data_type="cases",
-                  threshold=100,
-                  fit_info = {'constant' : 10,
-                              'length' : 5,
-                              'type' :"exp"}):
-
-    '''Create a semilog plot of the total number of cases in each country,
-    measured in days since that country first experienced a threshold number
-    of cases (default: 100).
-
-    The plot legend will include the time constant for an increase of a given
-    multiple (default: 10).  The number of datapoints over which this time
-    constant is evaluated can be changed in order to capture the initial trend
-    (default: 10000).  The fit can be applied to the first N data points or
-    the last N data points (default: first).
+    """
+    Perform a semilog fit to the data based on the definition of the fit,
+    to generate a time constant.
 
     inputs
-    -------
-    plot_data: data frame containing the data to be plotted/analyzed.  Typically
-               either total cases or deaths
-    countries: list of strings representing valid countries in the data set
-    states: list of strings representing valid US states in the data set
-    counties: list of strings representing valid US counties in the data set
-    data_type: string for plot legends indicating the data type being plotted
-    threshold: threshold number of cases that determines the start of the data
-           set for each country (default = 100)
+    ------
+    plot_data : numpy array of daily data
     fit_info : defining the way that the fit will be calculated
                'constant' : the multiple for which the time constant is evaluated.
                             A value of 10 means that the reported time constant
@@ -190,6 +138,87 @@ def semilog_since(plot_data, countries, states=[], counties=[],
                         "exp"   - semi-log fit to all points with an exponentially 
                                   decreasing weight as data is older, with constant 1/N
                                   (default: "first")
+    """
+    
+    if fit_info['type'] == "exp":
+        data_size = plot_data.size
+        weights = np.exp(-np.array(range(data_size))/fit_info['length'])
+        fit_data = np.polyfit(range(data_size),np.log10(plot_data),1,w=np.flip(weights))
+    else:
+        fit_length = np.min([plot_data.size, fit_info['length']])
+        if fit_info['type'] == "last":
+            fit_data = np.polyfit(range(fit_length),np.log10(plot_data[-fit_length:]),1)
+        else:
+            fit_data = np.polyfit(range(fit_length),np.log10(plot_data[:fit_length]),1)
+
+    time_constant = 1/(fit_data[0]/np.log10(fit_info['constant']))
+
+    return time_constant
+
+def generate_legend_label(fit_info):
+    
+    if fit_info['type'] == "exp":
+        legend_label = "Time constants based on \nexponentially weighted fit \n" + \
+                       "with exp constant {}.".format(fit_info['length'])
+    else:
+        legend_label = "Time constants based on \n {} {} data points.".format(fit_info['type'],
+                                                                              fit_info['length'])
+
+    return legend_label
+    
+def semilog_per_capita_since(plot_data, countries, states=[], counties=[],
+                             data_type="cases",
+                             threshold=1,
+                             fit_info = {'constant' : 10,
+                                         'length' : 5,
+                                         'type' :"exp"}):
+    '''
+    Entry point for semilog plots since a threshold for per-capita data.
+
+    Passes real population data into semilog_since() and scale threshold by 1e6,
+    and update axis labels.
+
+    See semilog_since() for definition of parameters.
+    '''
+
+    fig = semilog_since(plot_data, countries, states, counties,
+                        population_data = pop_data,
+                        data_type = data_type,
+                        threshold = threshold/1e6,
+                        fit_info = fit_info)
+    
+    fig.axes[0].set_xlabel("Days since {}/1,000,000 per capita {}.".format(threshold, data_type))
+    fig.axes[0].set_ylabel("Number of {} per million people.".format(data_type))
+
+def semilog_since(plot_data, countries, states=[], counties=[],
+                  population_data = None,
+                  data_type="cases",
+                  threshold=100,
+                  fit_info = {'constant' : 10,
+                              'length' : 5,
+                              'type' :"exp"}):
+
+    '''
+    Create a semilog plot of the cases/deaths in each country, measured in days
+    since that country first experienced a threshold number of cases (default:
+    100).  Poplation data will be used to generate per capita results.
+
+    The plot legend will include the time constant for an increase of a given
+    multiple.  See fit_region_data() for usage of fit_info definition.
+
+    inputs
+    -------
+    plot_data: data frame containing the data to be plotted/analyzed.  Typically
+               either total cases or deaths
+    countries: list of strings representing valid countries in the data set
+    states: list of strings representing valid US states in the data set
+    counties: list of strings representing valid US counties in the data set
+    data_type: string for plot legends indicating the data type being plotted
+    threshold: threshold number of cases that determines the start of the data
+           set for each country (default = 100)
+    fit_info : dictionary to define the way that the fit will be calculated,
+               structure is defined in fit_region_data()
+
     '''
 
     fig = plt.figure(figsize=(10,7),facecolor="white")
@@ -203,13 +232,13 @@ def semilog_since(plot_data, countries, states=[], counties=[],
     for country in countries:
         tmp_data = select_country_data(plot_data, country, population = population_data[country],
                                        threshold=threshold)
-        time_constant, legend_label = fit_region_data(tmp_data, fit_info)
+        time_constant = fit_region_data(tmp_data, fit_info)
         ax.semilogy(range(tmp_data.size),tmp_data,"o-",
                      label="{} ({}x time: {:.2f} days)".format(country, fit_info['constant'],
                                                                time_constant))
     ax.set_xlabel("Days since {} cummulative {}.".format(threshold,data_type))
     ax.set_ylabel("Total number of {}.".format(data_type))
-    ax.legend(title=legend_label)
+    ax.legend(title=generate_legend_label(fit_info))
 
     return fig
 
