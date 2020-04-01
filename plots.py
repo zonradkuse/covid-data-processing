@@ -6,7 +6,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import json
 
-data_path = "COVID-19/csse_covid_19_data/csse_covid_19_time_series/"
+data_path = {'local': "COVID-19/csse_covid_19_data/csse_covid_19_time_series/",
+             'live' : "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/"
+             }
+default_data_location = 'local'
 
 country_string = "Country/Region"
 province_string = "Province/State"
@@ -15,15 +18,8 @@ lat_string = "Lat"
 
 
 def use_JHU_github_live_data():
-    override_file_prefix("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/")
-
-
-def override_file_prefix(path):
-    '''Override the data path used to load data files
-    '''
-    global data_path
-    data_path = path
-
+    global default_data_location
+    default_data_location = 'live'
 
 def read_population_data():
     '''
@@ -45,34 +41,23 @@ def read_population_data():
 
     return pop_dict
 
-def read_data_usa():
-    confirmed = pd.read_csv(data_path + "time_series_covid19_confirmed_US.csv")
-    deaths = pd.read_csv(data_path + "time_series_covid19_deaths_US.csv")
-    testing = None # pd.read_csv(data_path + "time_series_covid19_testing_US.csv")
+pop_data = read_population_data()
+
+def read_data(region, data_location = default_data_location):
+    confirmed = pd.read_csv(data_path[data_location] + "time_series_covid19_confirmed_" + region + ".csv")
+    deaths = pd.read_csv(data_path[data_location] + "time_series_covid19_deaths_" + region + ".csv")
+    testing = None # pd.read_csv(data_path[data_location] + "time_series_covid19_testing_" + region + ".csv")
 
     return confirmed, deaths, testing
 
-def read_data_global():
-    confirmed = pd.read_csv(data_path + "time_series_covid19_confirmed_global.csv")
-    deaths = pd.read_csv(data_path + "time_series_covid19_deaths_global.csv")
-    testing = None # pd.read_csv(data_path + "time_series_covid19_testing_global.csv")
+def read_data_usa(data_location = default_data_location):
+    return read_data("US", data_location)
 
-    return confirmed, deaths, testing
-
-def read_data():
-    #confirmed_us, deaths_us, testing_us = read_data_usa()
-    confirmed_global, deaths_global, testing_global = read_data_global()
-    # according to https://github.com/CSSEGISandData/COVID-19/issues/1250 they
-    # replaced US states by a single US entry in global. We drop it and merge
-    # it back into a unified dataframe
-    confirmed = confirmed_global# [confirmed_global[country_string] != "US"].append(confirmed_us)
-    deaths = deaths_global# [deaths_global[country_string] != "US"].append(deaths_us)
-    testing = None # testing_global[testing_global[country_string] != "US"].append(testing_us)
-
-    return confirmed, deaths, None #  testing is not yet published
+def read_data_global(data_location = default_data_location):
+    return read_data("global", data_location)
 
 def parse_country_data():
-    confirmed, deaths, testing = read_data()
+    confirmed, deaths, testing = read_data_global()
 
     confirmed = confirmed.drop([lat_string, long_string, province_string], axis=1)
     deaths = deaths.drop([lat_string, long_string, province_string], axis=1)
@@ -84,133 +69,33 @@ def parse_country_data():
 
     return confirmed, deaths, testing
 
-def parse_state_data(country):
+def parse_state_data(state):
     confirmed, deaths, testing = read_us_data()
 
-    confirmed = confirmed[confirmed[country_string] == country]
-    deaths = deaths[deaths[country_string] == country]
-    testing = None # recovered[recovered[country_string] == country]
+    confirmed = confirmed[confirmed(province_string) == state]
+    deaths = deaths[deaths[province_string] == state]
+    testing = None # testing[testing[province_string] == state]
 
     return confirmed, deaths, testing
 
 
-def semilog_per_capita_country_since(plot_data, countries, data_type="cases",
-                                     threshold=100,
-                                     fit_info = {'constant' : 10,
-                                                 'length' : 5,
-                                                 'type' :"exp"}):
-    '''Create a semilog plot of the per capita number of cases in each country,
-    measured in days since that country first experienced a threshold number
-    of cases (default: 100).
+def select_country_data(data_source,
+                        country,
+                        population = 1,
+                        threshold=100):
 
-    The plot legend will include the time constant for an increase of a given
-    multiple (default: 10).  The number of datapoints over which this time
-    constant is evaluated can be changed in order to capture the initial trend
-    (default: 10000).  The fit can be applied to the first N data points or
-    the last N data points (default: first).
+    """
+    Trim country data
+    """
 
-    inputs
-    -------
-     plot_data: data frame containing the data to be plotted/analyzed.  Typically
-               either total cases or deaths
-    countries: list of strings representing valid countries in the data set
-    data_type: string for plot legends indicating the data type being plotted
-    threshold_per_capita: threshold per capita number of cases per million people
-                          that determines the start of the data set for each
-                          country (default = 1)
-    time_constant_type: the multiple for which the time constant is evaluated.
-                        A value of 10 means that the reported time constant
-                        will be for a growth of 10x. (Default = 10)
-    fit_length_constant: Measure used to determine how much data to use in the fit.
-
-                         For "first" and "last" fit types, this is the maximum 
-                         number of data points to use in creating the time
-                         constant fit.  As countries "flatten their curve" a
-                         single exponential fit will not represent the early
-                         time constant (which is, debatably, more
-                         interesting).  It may be prudent to only consider the
-                         first set of points 
-
-                         For "exp" fit type, this is the rate at which the
-                         exponential weighting of the data falls off for older 
-                         data.
-
-                         (default = 10000; i.e. all points)
-    fit_type: String indicating which type of fit:
-              "first" - semi-log fit to first N points
-              "last"  - semi-log fit to last N points
-              "exp"   - semi-log fit to all points with an exponentially 
-                        decreasing weight as data is older, with constant 1/N
-              (default: "first")
-
-    '''
-
-    fig = plt.figure(figsize=(10,7),facecolor="white")
-    ax = plt.axes()
-
-    for country in countries:
-        tmp_data, fit_data = evaluate_country_per_capita_data(plot_data, country, threshold, fit_info)
-        time_constant = fit_data[0]
-        legend_label = fit_data[1]
-        ax.semilogy(range(tmp_data.size),tmp_data,"o-",
-                     label="{} ({}x time: {:.2f} days)".format(country, fit_info['constant'],
-                                                               time_constant))
-    ax.set_xlabel("Days since {}/1,000,000 per capita {}.".format(threshold, data_type))
-    ax.set_ylabel("Number of {} per million people.".format(data_type))
-    ax.legend(title=legend_label)
-
-def semilog_us_deaths_since(states, counties, threshold_num_cases=100,
-                        time_constant_type=10, fit_length_constant=10000,
-                        fit_type="first"):
-
-    cases, deaths, recovered = parse_state_data()
-
-    return semilog_us_data_since(deaths, states, counties, data_type="deaths",
-                       threshold_num_cases=threshold_num_cases,
-                       time_constant_type=time_constant_type,
-                       fit_length_constant=fit_length_constant,
-                       fit_type=fit_type)
-
-def semilog_us_cases_since(states, counties, threshold_num_cases=100,
-                        time_constant_type=10, fit_length_constant=10000,
-                        fit_type="first"):
-
-    cases, deaths, recovered = parse_state_data()
-
-    return semilog_us_data_since(cases, states, counties, data_type="cases",
-                       threshold_num_cases=threshold_num_cases,
-                       time_constant_type=time_constant_type,
-                       fit_length_constant=fit_length_constant,
-                       fit_type=fit_type)
-
-def evaluate_country_per_capita_data(data_source,
-                                     country,
-                                     threshold=100,
-                                     fit_info = {'constant' : 10,
-                                                 'length' : 5,
-                                                 'type' : "exp"}):
-    
-    pop_data = read_population_data()
-
-    plot_data = np.array(data_source[data_source.index.isin([country])].values.tolist()[0])
-    plot_data = plot_data/pop_data[country]
-    plot_data = plot_data[plot_data>(threshold/1e6)]
-
-    return plot_data, fit_country_data(plot_data, fit_info)
-
-def evaluate_country_data(data_source,
-                          country,
-                          threshold=100,
-                          fit_info = {'constant' : 10,
-                                      'length' : 5,
-                                      'type' : "exp"}):
     
     plot_data = np.array(data_source[data_source.index.isin([country])].values.tolist()[0])
+    plot_data = plot_data/population
     plot_data = plot_data[plot_data>threshold]
 
-    return plot_data, fit_country_data(plot_data, fit_info)
+    return plot_data
 
-def fit_country_data(plot_data, fit_info):
+def fit_region_data(plot_data, fit_info):
     
     if fit_info['type'] == "exp":
         data_size = plot_data.size
@@ -231,12 +116,34 @@ def fit_country_data(plot_data, fit_info):
 
     return time_constant, legend_label
 
-def semilog_country_since(plot_data, countries,
-                          data_type="cases",
-                          threshold=100,
-                          fit_info = {'constant' : 10,
-                                      'length' : 5,
-                                      'type' :"exp"}):
+def semilog_per_capita_since(plot_data, countries, states=[], counties=[],
+                             data_type="cases",
+                             threshold=1,
+                             fit_info = {'constant' : 10,
+                                         'length' : 5,
+                                         'type' :"exp"}):
+    '''
+    Entry point for semilog plots since a threshold for per-capita data.
+
+    See semilog_since() for definition of parameters.
+    '''
+
+    fig = semilog_since(plot_data, countries, states, counties,
+                        population_data = pop_data,
+                        data_type = data_type,
+                        threshold = threshold/1e6,
+                        fit_info = fit_info)
+    
+    fig.axes[0].set_xlabel("Days since {}/1,000,000 per capita {}.".format(threshold, data_type))
+    fig.axes[0].set_ylabel("Number of {} per million people.".format(data_type))
+
+def semilog_since(plot_data, countries, states=[], counties=[],
+                  population_data = None,
+                  data_type="cases",
+                  threshold=100,
+                  fit_info = {'constant' : 10,
+                              'length' : 5,
+                              'type' :"exp"}):
 
     '''Create a semilog plot of the total number of cases in each country,
     measured in days since that country first experienced a threshold number
@@ -253,42 +160,50 @@ def semilog_country_since(plot_data, countries,
     plot_data: data frame containing the data to be plotted/analyzed.  Typically
                either total cases or deaths
     countries: list of strings representing valid countries in the data set
+    states: list of strings representing valid US states in the data set
+    counties: list of strings representing valid US counties in the data set
     data_type: string for plot legends indicating the data type being plotted
     threshold: threshold number of cases that determines the start of the data
            set for each country (default = 100)
-    time_constant_type: the multiple for which the time constant is evaluated.
-                        A value of 10 means that the reported time constant
-                        will be for a growth of 10x. (Default = 10)
-    fit_length_constant: Measure used to determine how much data to use in the fit.
+    fit_info : defining the way that the fit will be calculated
+               'constant' : the multiple for which the time constant is evaluated.
+                            A value of 10 means that the reported time constant
+                            will be for a growth of 10x. (Default = 10)
+               'length' : Measure used to determine how much data to use in the fit.
 
-                         For "first" and "last" fit types, this is the maximum 
-                         number of data points to use in creating the time
-                         constant fit.  As countries "flatten their curve" a
-                         single exponential fit will not represent the early
-                         time constant (which is, debatably, more
-                         interesting).  It may be prudent to only consider the
-                         first set of points 
+                          For "first" and "last" fit types, this is the maximum 
+                          number of data points to use in creating the time
+                          constant fit.  As countries "flatten their curve" a
+                          single exponential fit will not represent the early
+                          time constant (which is, debatably, more
+                          interesting).  It may be prudent to only consider the
+                          first set of points 
 
-                         For "exp" fit type, this is the rate at which the
-                         exponential weighting of the data falls off for older 
-                         data.
-
-                         (default = 10000; i.e. all points)
-    fit_type: String indicating which type of fit:
-              "first" - semi-log fit to first N points
-              "last"  - semi-log fit to last N points
-              "exp"   - semi-log fit to all points with an exponentially 
-                        decreasing weight as data is older, with constant 1/N
-              (default: "first")
+                          For "exp" fit type, this is the rate at which the
+                          exponential weighting of the data falls off for older 
+                          data.
+ 
+                          (default = 10000; i.e. all points)
+                'type' : String indicating which type of fit:
+                        "first" - semi-log fit to first N points
+                        "last"  - semi-log fit to last N points
+                        "exp"   - semi-log fit to all points with an exponentially 
+                                  decreasing weight as data is older, with constant 1/N
+                                  (default: "first")
     '''
 
     fig = plt.figure(figsize=(10,7),facecolor="white")
     ax = plt.axes()
 
+    # fake population data for convenience
+    #   - all countries have 1 person for NON-per-capita results
+    if population_data is None:
+        population_data = dict(zip(countries,[1]*len(countries)))
+    
     for country in countries:
-        tmp_data, fit_data = evaluate_country_data(plot_data, country, threshold, fit_info)
-        time_constant = fit_data[0]
-        legend_label = fit_data[1]
+        tmp_data = select_country_data(plot_data, country, population = population_data[country],
+                                       threshold=threshold)
+        time_constant, legend_label = fit_region_data(tmp_data, fit_info)
         ax.semilogy(range(tmp_data.size),tmp_data,"o-",
                      label="{} ({}x time: {:.2f} days)".format(country, fit_info['constant'],
                                                                time_constant))
