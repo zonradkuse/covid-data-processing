@@ -198,7 +198,21 @@ def semilog_per_capita_since(plot_data, countries, states=[], counties=[],
                         fit_info = fit_info,
                         xlabel="Days since {} per capita {}.",
                         ylabel="Number of {} per million people.")
-    
+
+def guideline(axis, doubling_time):
+
+    xmin = 0
+    xmax = axis['xmax']
+    ymin = axis['ymin']
+
+    ymax = ymin * 2**(axis['xmax']/doubling_time)
+
+    if ymax > axis['ymax']:
+        ymax = axis['ymax']
+        xmax = np.log2(ymax/ymin) * doubling_time
+
+    return (xmin, xmax), (ymin,ymax)
+        
 def semilog_since(plot_data, countries, states=[], counties=[],
                   population_data = None,
                   data_type="cases",
@@ -239,14 +253,24 @@ def semilog_since(plot_data, countries, states=[], counties=[],
     #   - all countries have 1 person for NON-per-capita results
     if population_data is None:
         population_data = dict(zip(countries,[1]*len(countries)))
+
+    axis = {'xmin':0, 'xmax':0, 'ymin':1e6, 'ymax': 0}
     
     for country in countries:
         tmp_data = select_country_data(plot_data, country, population = population_data[country],
                                        threshold=threshold)
         time_constant = fit_region_data(tmp_data, fit_info)
+        axis['xmax'] = max(axis['xmax'],len(tmp_data))
+        axis['ymin'] = min(axis['ymin'],min(tmp_data))
+        axis['ymax'] = max(axis['ymax'],max(tmp_data))
         ax.semilogy(range(tmp_data.size),tmp_data,"o-",
                      label="{} ({}x time: {:.2f} days)".format(country, fit_info['constant'],
                                                                time_constant))
+    doubling_lines = [2,3,4,5,10]
+    for doubling_time in doubling_lines:
+        guide_x, guide_y = guideline(axis,doubling_time)
+        ax.semilogy(guide_x,guide_y,'--',color="silver")
+        ax.text(guide_x[1],guide_y[1],'doubles in\n{} days'.format(doubling_time),color="silver")
     ax.set_xlabel(xlabel.format(threshold,data_type))
     ax.set_ylabel(ylabel.format(data_type))
     ax.legend(title=generate_legend_label(fit_info))
