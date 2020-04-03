@@ -10,6 +10,7 @@ data_path = {'local': "COVID-19/csse_covid_19_data/csse_covid_19_time_series/",
              'live' : "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/"
              }
 default_data_location = 'local'
+use_data_location = default_data_location
 
 country_string = "Country/Region"
 province_string = "Province/State"
@@ -17,8 +18,8 @@ long_string = "Long"
 lat_string = "Lat"
 
 def use_JHU_github_live_data():
-    global default_data_location
-    default_data_location = 'live'
+    global use_data_location
+    use_data_location = 'live'
 
 def read_population_data():
     '''
@@ -42,21 +43,30 @@ def read_population_data():
 
 pop_data = read_population_data()
 
-def read_data(region, data_location = default_data_location):
+def read_data(region, data_location = None):
+    if data_location is None:
+        data_location = use_data_location
     confirmed = pd.read_csv(data_path[data_location] + "time_series_covid19_confirmed_" + region + ".csv")
     deaths = pd.read_csv(data_path[data_location] + "time_series_covid19_deaths_" + region + ".csv")
     testing = None # pd.read_csv(data_path[data_location] + "time_series_covid19_testing_" + region + ".csv")
 
     return confirmed, deaths, testing
 
-def read_data_usa(data_location = default_data_location):
+def read_data_usa(data_location = None):
+    if data_location is None:
+        data_location = use_data_location
     return read_data("US", data_location)
 
-def read_data_global(data_location = default_data_location):
+def read_data_global(data_location = None):
+    if data_location is None:
+        data_location = use_data_location
     return read_data("global", data_location)
 
-def parse_country_data():
-    confirmed, deaths, testing = read_data_global()
+def parse_country_data(data_location = None):
+    if data_location is None:
+        data_location = use_data_location
+    print("using " + data_location + " data")
+    confirmed, deaths, testing = read_data_global(data_location)
 
     confirmed = confirmed.drop([lat_string, long_string, province_string], axis=1)
     deaths = deaths.drop([lat_string, long_string, province_string], axis=1)
