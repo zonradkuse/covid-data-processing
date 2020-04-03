@@ -176,6 +176,35 @@ def generate_legend_label(fit_info):
 
     return legend_label
     
+def calculate_guideline(axis, doubling_time):
+    """
+    Calculate a doubling time guideline that fits within the bounds of the plot.
+
+    inputs
+    ------
+    axis: dictionary of axis dimensions, with keys
+          'xmin', 'xmax' : extents of x-axis, typically integers
+          'ymin', 'ymax' : extends of y-axis
+    doubling_time: doubling time selected for this line
+
+    outputs
+    -------
+    (xmin, xmax) : tuple with first and last points of line on x-axis
+    (ymin, ymax) : tuple with first and last points of line on y-axis
+    """
+
+    xmin = 0
+    xmax = axis['xmax']
+    ymin = axis['ymin']
+
+    ymax = ymin * 2**(axis['xmax']/doubling_time)
+
+    if ymax > axis['ymax']:
+        ymax = axis['ymax']
+        xmax = np.log2(ymax/ymin) * doubling_time
+
+    return (xmin, xmax), (ymin,ymax)
+        
 def semilog_per_capita_since(plot_data, countries, states=[], counties=[],
                              data_type="cases",
                              threshold=1,
@@ -191,28 +220,14 @@ def semilog_per_capita_since(plot_data, countries, states=[], counties=[],
     See semilog_since() for definition of parameters.
     '''
 
-    fig = semilog_since(plot_data, countries, states, counties,
-                        population_data = pop_data,
-                        data_type = data_type,
-                        threshold = threshold/1e6,
-                        fit_info = fit_info,
-                        xlabel="Days since {} per capita {}.",
-                        ylabel="Number of {} per million people.")
+    return semilog_since(plot_data, countries, states, counties,
+                         population_data = pop_data,
+                         data_type = data_type,
+                         threshold = threshold/1e6,
+                         fit_info = fit_info,
+                         xlabel="Days since {} per capita {}.",
+                         ylabel="Number of {} per million people.")
 
-def guideline(axis, doubling_time):
-
-    xmin = 0
-    xmax = axis['xmax']
-    ymin = axis['ymin']
-
-    ymax = ymin * 2**(axis['xmax']/doubling_time)
-
-    if ymax > axis['ymax']:
-        ymax = axis['ymax']
-        xmax = np.log2(ymax/ymin) * doubling_time
-
-    return (xmin, xmax), (ymin,ymax)
-        
 def semilog_since(plot_data, countries, states=[], counties=[],
                   population_data = None,
                   data_type="cases",
@@ -268,12 +283,14 @@ def semilog_since(plot_data, countries, states=[], counties=[],
                                                                time_constant))
     doubling_lines = [2,3,4,5,10]
     for doubling_time in doubling_lines:
-        guide_x, guide_y = guideline(axis,doubling_time)
+        guide_x, guide_y = calculate_guideline(axis,doubling_time)
         ax.semilogy(guide_x,guide_y,'--',color="silver")
         ax.text(guide_x[1],guide_y[1],'doubles in\n{} days'.format(doubling_time),color="silver")
     ax.set_xlabel(xlabel.format(threshold,data_type))
     ax.set_ylabel(ylabel.format(data_type))
     ax.legend(title=generate_legend_label(fit_info))
+
+    return fig
 
     
 def generate_all_plots(countries):
