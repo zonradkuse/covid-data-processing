@@ -408,7 +408,7 @@ def semilog_cases_since(countries):
     
     confirmed, deaths, recovered = parse_country_data()
 
-    return semilog_country_since(confirmed, countries)
+    return semilog_since(((confirmed, countries, None),))
     
 def generate_absolute_plot(data, countries, title=None):
     return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(title=title).get_figure()
