@@ -250,7 +250,7 @@ def semilog_per_capita_since(data_region_list,
                                          'length' : 5,
                                          'type' :"exp"}):
     '''
-    Entry point for semilog plots since a threshold for per-capita data.
+    Entry point for semilog plots for data since some threshold for per-capita data.
 
     Passes real population data into semilog_since() and scale threshold by 1e6,
     and update axis labels.
@@ -284,11 +284,10 @@ def semilog_since(data_region_list,
 
     inputs
     -------
-    plot_data: data frame containing the data to be plotted/analyzed.  Typically
-               either total cases or deaths
-    countries: list of strings representing valid countries in the data set
-    states: list of strings representing valid US states in the data set
-    counties: list of strings representing valid US counties in the data set
+    data_region_list: tuple that provides the following items in this order
+                      - a data frame containing data
+                      - a list of region names to extract from the index of that data frame
+                      - population data if any
     data_type: string for plot legends indicating the data type being plotted
     threshold: threshold number of cases that determines the start of the data
            set for each country (default = 100)
