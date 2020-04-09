@@ -4,6 +4,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import ScalarFormatter
 import json
 
 data_path = {'local': "COVID-19/csse_covid_19_data/csse_covid_19_time_series/",
@@ -241,7 +242,7 @@ def calculate_guideline(axis, doubling_time):
         ymax = axis['ymax']
         xmax = np.log2(ymax/ymin) * doubling_time
 
-    return (xmin, xmax), (ymin,ymax)
+    return np.array((xmin, xmax)), np.array((ymin,ymax))
         
 def semilog_per_capita_since(data_region_list,
                              data_type="cases",
@@ -261,9 +262,10 @@ def semilog_per_capita_since(data_region_list,
     return semilog_since(data_region_list,
                          data_type = data_type,
                          threshold = threshold/1e6,
-                         fit_info = fit_info,
-                         xlabel="Days since {} per capita {}.",
-                         ylabel="Number of {} per million people.")
+                         fit_info = fit_info,                        
+                         xlabel="Days since {} {} per million people.",
+                         ylabel="Number of {} per million people.",
+                         yscale=1e6)
 
 def semilog_since(data_region_list,
                   data_type="cases",
@@ -272,7 +274,8 @@ def semilog_since(data_region_list,
                               'length' : 5,
                               'type' :"exp"},
                   xlabel="Days since {} cummulative {}",
-                  ylabel="Total number of {}."):
+                  ylabel="Total number of {}.",
+                  yscale=1):
 
     '''
     Create a semilog plot of the cases/deaths in each country, measured in days
@@ -310,22 +313,25 @@ def semilog_since(data_region_list,
         for region in region_list:
             tmp_data = select_region_data(plot_data, region, population = population_data[region],
                                            threshold=threshold)
-            time_constant = fit_region_data(tmp_data, fit_info)
-            axis['xmax'] = max(axis['xmax'],len(tmp_data))
-            axis['ymin'] = min(axis['ymin'],min(tmp_data))
-            axis['ymax'] = max(axis['ymax'],max(tmp_data))
-            ax.semilogy(range(tmp_data.size),tmp_data,"o-",
-                        label="{} ({}x time: {:.2f} days)".format(region, fit_info['constant'],
-                                                                  time_constant))
+            if tmp_data.size > 0:
+                time_constant = fit_region_data(tmp_data, fit_info)
+                axis['xmax'] = max(axis['xmax'],len(tmp_data))
+                axis['ymin'] = min(axis['ymin'],min(tmp_data))
+                axis['ymax'] = max(axis['ymax'],max(tmp_data))
+                ax.semilogy(range(tmp_data.size),tmp_data*yscale,"o-",
+                            label="{} ({}x time: {:.2f} days)".format(region, fit_info['constant'],
+                                                                      time_constant))
     doubling_lines = [2,3,4,5,10]
     for doubling_time in doubling_lines:
         guide_x, guide_y = calculate_guideline(axis,doubling_time)
+        guide_y *= yscale
         ax.semilogy(guide_x,guide_y,'--',color="silver")
         ax.text(guide_x[1],guide_y[1],'doubles in\n{} days'.format(doubling_time),color="silver")
-    ax.set_xlabel(xlabel.format(threshold,data_type))
+    ax.set_xlabel(xlabel.format(int(threshold*yscale),data_type))
     ax.set_ylabel(ylabel.format(data_type))
     ax.legend(title=generate_legend_label(fit_info))
-
+    ax.yaxis.set_major_formatter(ScalarFormatter())
+    
     return fig
 
     
