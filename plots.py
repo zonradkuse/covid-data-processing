@@ -275,7 +275,8 @@ def semilog_since(data_region_list,
                               'type' :"exp"},
                   xlabel="Days since {} cummulative {}",
                   ylabel="Total number of {}.",
-                  yscale=1):
+                  yscale=1,
+                  labels=()):
 
     '''
     Create a semilog plot of the cases/deaths in each country, measured in days
@@ -313,7 +314,7 @@ def semilog_since(data_region_list,
         for region in region_list:
             tmp_data = select_region_data(plot_data, region, population = population_data[region],
                                            threshold=threshold)
-            if tmp_data.size > 0:
+            if tmp_data.size > 2:
                 time_constant = fit_region_data(tmp_data, fit_info)
                 axis['xmax'] = max(axis['xmax'],len(tmp_data))
                 axis['ymin'] = min(axis['ymin'],min(tmp_data))
@@ -331,6 +332,9 @@ def semilog_since(data_region_list,
     ax.set_ylabel(ylabel.format(data_type))
     ax.legend(title=generate_legend_label(fit_info))
     ax.yaxis.set_major_formatter(ScalarFormatter())
+    for label in labels:
+        ax.annotate(label[4], xy=(label[0], label[1]), xytext=(label[2],label[3]),
+                    arrowprops=dict(facecolor='black', shrink=0.005, width=1, headlength=6, headwidth=6))
     
     return fig
 
