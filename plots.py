@@ -90,6 +90,8 @@ def parse_country_data(data_location = None):
 
     return confirmed, deaths, testing
 
+
+
 def parse_us_state_data(data_location = None):
 
     confirmed, deaths, testing = read_data_usa(resolve_data_location(data_location))
@@ -105,6 +107,24 @@ def parse_us_state_data(data_location = None):
     deaths = deaths.groupby(state_string).agg("sum")
 
     testing = None # testing.groupby(state_string).agg("sum")
+
+    return confirmed, deaths, testing
+
+def parse_province_data(country, data_location = None):
+
+    confirmed, deaths, testing = read_data_global(resolve_data_location(data_location))
+
+    drop_columns = [lat_string, long_string]
+    confirmed = confirmed.drop(drop_columns, axis=1)
+    deaths = deaths.drop(drop_columns, axis=1)
+    # testing = testing.drop(drop_columns, axis=1)
+
+    confirmed = confirmed[confirmed[country_string] == country].set_index(province_string)
+    deaths = deaths[deaths[country_string] == country].set_index(province_string)
+    
+    confirmed = confirmed.drop([country_string], axis=1)
+    deaths = deaths.drop([country_string], axis=1)
+    testing = None # testing.groupby(country_string).agg("sum")
 
     return confirmed, deaths, testing
 
@@ -197,8 +217,13 @@ def fit_region_data(plot_data, fit_info):
         fit_length = np.min([plot_data.size, fit_info['length']])
         if fit_info['type'] == "last":
             fit_data = np.polyfit(range(fit_length),np.log10(plot_data[-fit_length:]),1)
-        else:
+        elif fit_info['type'] == "first":
             fit_data = np.polyfit(range(fit_length),np.log10(plot_data[:fit_length]),1)
+        elif fit_info['type'] == '2weeksago':
+            two_weeks = 14
+            xmin = np.max([0,plot_data.size - two_weeks])
+            fit_length = np.min([fit_info['length'], xmin])
+            fit_data = np.polyfit(range(fit_length),np.log10(plot_data[xmin-fit_length:xmin]),1)
 
     time_constant = 1/(fit_data[0]/np.log10(fit_info['constant']))
 
@@ -247,9 +272,10 @@ def calculate_guideline(axis, doubling_time):
 def semilog_per_capita_since(data_region_list,
                              data_type="cases",
                              threshold=1,
-                             fit_info = {'constant' : 10,
+                             legend_fit_info = {'constant' : 10,
                                          'length' : 5,
-                                         'type' :"exp"}):
+                                         'type' :"exp"},
+                             sightline_fit_info = []):
     '''
     Entry point for semilog plots for data since some threshold for per-capita data.
 
@@ -262,21 +288,23 @@ def semilog_per_capita_since(data_region_list,
     return semilog_since(data_region_list,
                          data_type = data_type,
                          threshold = threshold/1e6,
-                         fit_info = fit_info,                        
+                         legend_fit_info = legend_fit_info,                        
                          xlabel="Days since {} {} per million people.",
                          ylabel="Number of {} per million people.",
-                         yscale=1e6)
+                         yscale=1e6,
+                         sightline_fit_info=sightline_fit_info)
 
 def semilog_since(data_region_list,
                   data_type="cases",
                   threshold=100,
-                  fit_info = {'constant' : 10,
+                  legend_fit_info = {'constant' : 10,
                               'length' : 5,
                               'type' :"exp"},
                   xlabel="Days since {} cummulative {}",
                   ylabel="Total number of {}.",
                   yscale=1,
-                  labels=()):
+                  labels=(),
+                  sightline_fit_info=[]):
 
     '''
     Create a semilog plot of the cases/deaths in each country, measured in days
@@ -306,7 +334,7 @@ def semilog_since(data_region_list,
 
     axis = {'xmin':0, 'xmax':0, 'ymin':1e6, 'ymax': 0}
 
-    for (plot_data, region_list, population_data) in data_region_list:
+    for (plot_data, region_list, population_data, region_sightline_list) in data_region_list:
         # fake population data for convenience
         #   - all countries have 1 person for NON-per-capita results
         if population_data is None:
@@ -315,22 +343,32 @@ def semilog_since(data_region_list,
             tmp_data = select_region_data(plot_data, region, population = population_data[region],
                                            threshold=threshold)
             if tmp_data.size > 2:
-                time_constant = fit_region_data(tmp_data, fit_info)
+                time_constant = fit_region_data(tmp_data, legend_fit_info)
                 axis['xmax'] = max(axis['xmax'],len(tmp_data))
                 axis['ymin'] = min(axis['ymin'],min(tmp_data))
                 axis['ymax'] = max(axis['ymax'],max(tmp_data))
                 ax.semilogy(range(tmp_data.size),tmp_data*yscale,"o-",
-                            label="{} ({}x time: {:.2f} days)".format(region, fit_info['constant'],
+                            label="{} ({}x time: {:.2f} days)".format(region, legend_fit_info['constant'],
                                                                       time_constant))
-    doubling_lines = [2,3,4,5,10]
-    for doubling_time in doubling_lines:
-        guide_x, guide_y = calculate_guideline(axis,doubling_time)
-        guide_y *= yscale
-        ax.semilogy(guide_x,guide_y,'--',color="silver")
-        ax.text(guide_x[1],guide_y[1],'doubles in\n{} days'.format(doubling_time),color="silver")
+
+    added_sightlines = False
+    for (plot_data, region_list, population_data, region_sightline_list) in data_region_list:
+        # fake population data for convenience
+        #   - all countries have 1 person for NON-per-capita results
+        if population_data is None:
+            population_data = dict(zip(region_list,[1]*len(region_list)))
+        for region in region_sightline_list:
+            tmp_data = select_region_data(plot_data, region, population = population_data[region],
+                                           threshold=threshold)
+
+            semilog_add_country_slope(ax, axis, tmp_data, yscale, sightline_fit_info, region)
+            added_sightlines = True
+                
+    if not added_sightlines:
+        semilog_add_guidelines(ax, axis, yscale=yscale)
     ax.set_xlabel(xlabel.format(int(threshold*yscale),data_type))
     ax.set_ylabel(ylabel.format(data_type))
-    ax.legend(title=generate_legend_label(fit_info))
+    ax.legend(title=generate_legend_label(legend_fit_info))
     ax.yaxis.set_major_formatter(ScalarFormatter())
     for label in labels:
         ax.annotate(label[4], xy=(label[0], label[1]), xytext=(label[2],label[3]),
@@ -338,7 +376,77 @@ def semilog_since(data_region_list,
     
     return fig
 
+
+def semilog_add_guidelines(ax, axis, yscale=1, doubling_lines=[2,3,4,5,10]):
+
+    for doubling_time in doubling_lines:
+        guide_x, guide_y = calculate_guideline(axis,doubling_time)
+        guide_y *= yscale
+        ax.semilogy(guide_x,guide_y,'--',color="silver")
+        ax.text(guide_x[1],guide_y[1],'doubles in\n{} days'.format(doubling_time),color="silver")
+
+def calculate_sightline(tmp_data, axis, doubling_time, fit_model ):
+    """
+    Calculate a doubling time guideline that fits within the bounds of the plot.
+
+    inputs
+    ------
+    axis: dictionary of axis dimensions, with keys
+          'xmin', 'xmax' : extents of x-axis, typically integers
+          'ymin', 'ymax' : extends of y-axis
+    doubling_time: doubling time selected for this line
+
+    outputs
+    -------
+    (xmin, xmax) : tuple with first and last points of line on x-axis
+    (ymin, ymax) : tuple with first and last points of line on y-axis
+    """
+
+    extrapolate_length = 10
     
+    if fit_model['type'] == 'last':
+        fit_length = min(fit_model['length'], tmp_data.size)
+        x = tmp_data.size-1
+        y = tmp_data[-1]
+    elif fit_model['type'] == 'first':
+        fit_length = min(fit_model['length'], tmp_data.size)
+        x = 0
+        y = tmp_data[0]
+    elif fit_model['type'] == '2weeksago':
+        two_weeks = 14
+        x = max(0,tmp_data.size - two_weeks)
+        y = tmp_data[x]
+        fit_length = min(fit_model['length'], x)
+        
+    xmin = max(x - fit_length,0)
+    ymin = y * 2**((xmin-x)/doubling_time)
+    xmax = x + extrapolate_length
+    ymax = y * 2**((xmax - x)/doubling_time)
+        
+    # if ymax > axis['ymax']:
+    #     ymax = axis['ymax']
+    #     xmax = np.log2(ymax/ymin) * doubling_time
+
+    return np.array((xmin, xmax)), np.array((ymin,ymax))
+        
+def semilog_add_country_slope(ax, axis, tmp_data, yscale, fit_models, country):
+
+    annotation_text = {'last': '{} currently\ndoubles in',
+                       'first': '{} began\n doubling in',
+                       '2weeksago': '2 weeks ago {}\nwas doubling in'}
+    
+    if tmp_data.size > 2:
+        for fit_model in fit_models:
+            time_constant = fit_region_data(tmp_data,fit_model)
+            guide_x, guide_y = calculate_sightline(tmp_data, axis, time_constant, fit_model)
+            guide_y *= yscale
+            ax.semilogy(guide_x,guide_y,'--', color="grey")
+            ax.text(guide_x[1],guide_y[1],
+                    annotation_text[fit_model['type']].format(country) +
+                    '\n{:.2f} days'.format(time_constant),color="black")
+
+
+
 def generate_all_plots(countries):
     confirmed, deaths, recovered = parse_country_data()
 
