@@ -4,6 +4,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import ScalarFormatter
 import json
 
 data_path = {'local': "COVID-19/csse_covid_19_data/csse_covid_19_time_series/",
@@ -14,6 +15,7 @@ use_data_location = default_data_location
 
 country_string = "Country/Region"
 province_string = "Province/State"
+state_string = "Province_State"  # for some reason the US data uses a different column name
 long_string = "Long"
 lat_string = "Lat"
 
@@ -43,6 +45,7 @@ def read_population_data():
 
 pop_data = read_population_data()
 
+
 def read_data(region, data_location = None):
     if data_location is None:
         data_location = use_data_location
@@ -62,15 +65,24 @@ def read_data_global(data_location = None):
         data_location = use_data_location
     return read_data("global", data_location)
 
-def parse_country_data(data_location = None):
+def resolve_data_location(data_location):
+
     if data_location is None:
         data_location = use_data_location
-    print("using " + data_location + " data")
-    confirmed, deaths, testing = read_data_global(data_location)
 
-    confirmed = confirmed.drop([lat_string, long_string, province_string], axis=1)
-    deaths = deaths.drop([lat_string, long_string, province_string], axis=1)
-    # testing = testing.drop([lat_string, long_string, province_string], axis=1)
+    print("using " + data_location + " data")
+
+    return data_location
+
+
+def parse_country_data(data_location = None):
+
+    confirmed, deaths, testing = read_data_global(resolve_data_location(data_location))
+
+    drop_columns = [lat_string, long_string, province_string]
+    confirmed = confirmed.drop(drop_columns, axis=1)
+    deaths = deaths.drop(drop_columns, axis=1)
+    # testing = testing.drop(drop_columns, axis=1)
 
     confirmed = confirmed.groupby(country_string).agg("sum")
     deaths = deaths.groupby(country_string).agg("sum")
@@ -78,20 +90,47 @@ def parse_country_data(data_location = None):
 
     return confirmed, deaths, testing
 
-def parse_state_data(state):
-    confirmed, deaths, testing = read_us_data()
+def parse_us_state_data(data_location = None):
 
-    confirmed = confirmed[confirmed(province_string) == state]
-    deaths = deaths[deaths[province_string] == state]
-    testing = None # testing[testing[province_string] == state]
+    confirmed, deaths, testing = read_data_usa(resolve_data_location(data_location))
+
+    drop_columns = ['UID','iso2','iso3','code3','FIPS','Admin2','Country_Region','Lat','Long_','Combined_Key']
+    confirmed = confirmed.drop(drop_columns, axis=1)
+    deaths = deaths.drop(drop_columns, axis=1)
+    deaths = deaths.drop(['Population'], axis=1)
+    # testing = testing.drop(drop_columns, axis=1)
+
+    
+    confirmed = confirmed.groupby(state_string).agg("sum")
+    deaths = deaths.groupby(state_string).agg("sum")
+
+    testing = None # testing.groupby(state_string).agg("sum")
 
     return confirmed, deaths, testing
 
+def parse_us_county_data(state, data_location = None):
 
-def select_country_data(data_source,
-                        country,
-                        population = 1,
-                        threshold=100):
+    confirmed, deaths, testing = read_data_usa(resolve_data_location(data_location))
+
+    drop_columns = ['UID','iso2','iso3','code3','FIPS','Country_Region','Lat','Long_','Combined_Key']
+    confirmed = confirmed.drop(drop_columns, axis=1)
+    deaths = deaths.drop(drop_columns, axis=1)
+    deaths = deaths.drop(['Population'], axis=1)
+    # testing = testing.drop(drop_columns, axis=1)
+
+    confirmed = confirmed[confirmed[state_string] == state].set_index('Admin2')
+    deaths = deaths[deaths[state_string] == state].set_index('Admin2')
+
+    confirmed = confirmed.drop([state_string], axis=1)
+    deaths = deaths.drop([state_string], axis=1)
+    testing = None # testing.groupby(state_string).agg("sum")
+
+    return confirmed, deaths, testing
+
+def select_region_data(data_source,
+                       region,
+                       population = 1,
+                       threshold=100):
 
     """
     Select data for the given country, divide by its population and 
@@ -109,7 +148,7 @@ def select_country_data(data_source,
                  (default: 100)
     """
 
-    plot_data = np.array(data_source[data_source.index.isin([country])].values.tolist()[0])
+    plot_data = np.array(data_source[data_source.index.isin([region])].values.tolist()[0])
     plot_data = plot_data/population
     plot_data = plot_data[plot_data>threshold]
 
@@ -203,16 +242,16 @@ def calculate_guideline(axis, doubling_time):
         ymax = axis['ymax']
         xmax = np.log2(ymax/ymin) * doubling_time
 
-    return (xmin, xmax), (ymin,ymax)
+    return np.array((xmin, xmax)), np.array((ymin,ymax))
         
-def semilog_per_capita_since(plot_data, countries, states=[], counties=[],
+def semilog_per_capita_since(data_region_list,
                              data_type="cases",
                              threshold=1,
                              fit_info = {'constant' : 10,
                                          'length' : 5,
                                          'type' :"exp"}):
     '''
-    Entry point for semilog plots since a threshold for per-capita data.
+    Entry point for semilog plots for data since some threshold for per-capita data.
 
     Passes real population data into semilog_since() and scale threshold by 1e6,
     and update axis labels.
@@ -220,23 +259,24 @@ def semilog_per_capita_since(plot_data, countries, states=[], counties=[],
     See semilog_since() for definition of parameters.
     '''
 
-    return semilog_since(plot_data, countries, states, counties,
-                         population_data = pop_data,
+    return semilog_since(data_region_list,
                          data_type = data_type,
                          threshold = threshold/1e6,
-                         fit_info = fit_info,
-                         xlabel="Days since {} per capita {}.",
-                         ylabel="Number of {} per million people.")
+                         fit_info = fit_info,                        
+                         xlabel="Days since {} {} per million people.",
+                         ylabel="Number of {} per million people.",
+                         yscale=1e6)
 
-def semilog_since(plot_data, countries, states=[], counties=[],
-                  population_data = None,
+def semilog_since(data_region_list,
                   data_type="cases",
                   threshold=100,
                   fit_info = {'constant' : 10,
                               'length' : 5,
                               'type' :"exp"},
                   xlabel="Days since {} cummulative {}",
-                  ylabel="Total number of {}."):
+                  ylabel="Total number of {}.",
+                  yscale=1,
+                  labels=()):
 
     '''
     Create a semilog plot of the cases/deaths in each country, measured in days
@@ -248,11 +288,10 @@ def semilog_since(plot_data, countries, states=[], counties=[],
 
     inputs
     -------
-    plot_data: data frame containing the data to be plotted/analyzed.  Typically
-               either total cases or deaths
-    countries: list of strings representing valid countries in the data set
-    states: list of strings representing valid US states in the data set
-    counties: list of strings representing valid US counties in the data set
+    data_region_list: tuple that provides the following items in this order
+                      - a data frame containing data
+                      - a list of region names to extract from the index of that data frame
+                      - population data if any
     data_type: string for plot legends indicating the data type being plotted
     threshold: threshold number of cases that determines the start of the data
            set for each country (default = 100)
@@ -264,32 +303,39 @@ def semilog_since(plot_data, countries, states=[], counties=[],
     fig = plt.figure(figsize=(10,7),facecolor="white")
     ax = plt.axes()
 
-    # fake population data for convenience
-    #   - all countries have 1 person for NON-per-capita results
-    if population_data is None:
-        population_data = dict(zip(countries,[1]*len(countries)))
 
     axis = {'xmin':0, 'xmax':0, 'ymin':1e6, 'ymax': 0}
-    
-    for country in countries:
-        tmp_data = select_country_data(plot_data, country, population = population_data[country],
-                                       threshold=threshold)
-        time_constant = fit_region_data(tmp_data, fit_info)
-        axis['xmax'] = max(axis['xmax'],len(tmp_data))
-        axis['ymin'] = min(axis['ymin'],min(tmp_data))
-        axis['ymax'] = max(axis['ymax'],max(tmp_data))
-        ax.semilogy(range(tmp_data.size),tmp_data,"o-",
-                     label="{} ({}x time: {:.2f} days)".format(country, fit_info['constant'],
-                                                               time_constant))
+
+    for (plot_data, region_list, population_data) in data_region_list:
+        # fake population data for convenience
+        #   - all countries have 1 person for NON-per-capita results
+        if population_data is None:
+            population_data = dict(zip(region_list,[1]*len(region_list)))
+        for region in region_list:
+            tmp_data = select_region_data(plot_data, region, population = population_data[region],
+                                           threshold=threshold)
+            if tmp_data.size > 2:
+                time_constant = fit_region_data(tmp_data, fit_info)
+                axis['xmax'] = max(axis['xmax'],len(tmp_data))
+                axis['ymin'] = min(axis['ymin'],min(tmp_data))
+                axis['ymax'] = max(axis['ymax'],max(tmp_data))
+                ax.semilogy(range(tmp_data.size),tmp_data*yscale,"o-",
+                            label="{} ({}x time: {:.2f} days)".format(region, fit_info['constant'],
+                                                                      time_constant))
     doubling_lines = [2,3,4,5,10]
     for doubling_time in doubling_lines:
         guide_x, guide_y = calculate_guideline(axis,doubling_time)
+        guide_y *= yscale
         ax.semilogy(guide_x,guide_y,'--',color="silver")
         ax.text(guide_x[1],guide_y[1],'doubles in\n{} days'.format(doubling_time),color="silver")
-    ax.set_xlabel(xlabel.format(threshold,data_type))
+    ax.set_xlabel(xlabel.format(int(threshold*yscale),data_type))
     ax.set_ylabel(ylabel.format(data_type))
     ax.legend(title=generate_legend_label(fit_info))
-
+    ax.yaxis.set_major_formatter(ScalarFormatter())
+    for label in labels:
+        ax.annotate(label[4], xy=(label[0], label[1]), xytext=(label[2],label[3]),
+                    arrowprops=dict(facecolor='black', shrink=0.005, width=1, headlength=6, headwidth=6))
+    
     return fig
 
     
@@ -371,7 +417,7 @@ def semilog_cases_since(countries):
     
     confirmed, deaths, recovered = parse_country_data()
 
-    return semilog_country_since(confirmed, countries)
+    return semilog_since(((confirmed, countries, None),))
     
 def generate_absolute_plot(data, countries, title=None):
     return data[data.index.isin(countries)].replace(np.nan, 0).T.plot(title=title).get_figure()
