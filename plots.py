@@ -378,7 +378,7 @@ def semilog_since(data_region_list,
         semilog_add_guidelines(ax, axis, yscale=yscale)
     ax.set_xlabel(xlabel.format(int(threshold*yscale),data_type))
     ax.set_ylabel(ylabel.format(data_type))
-    ax.legend(title=generate_legend_label(legend_fit_info))
+    ax.legend(title=generate_legend_label(legend_fit_info), loc="upper left")
     ax.yaxis.set_major_formatter(ScalarFormatter())
     for label in labels:
         ax.annotate(label[4], xy=(label[0], label[1]), xytext=(label[2],label[3]),
